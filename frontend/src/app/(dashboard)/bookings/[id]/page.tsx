@@ -121,7 +121,10 @@ export default function BookingDetailPage() {
     try {
       const res = await api.post(`/google-calendar/sync/${booking.id}`);
       setBooking((b: any) => ({ ...b, calendarSynced: true, googleEventId: res.data.eventId }));
-      toast.success('Tersinkronisasi ke Google Calendar');
+      toast.success('Tersinkronisasi ke Google Calendar', {
+        description: res.data.htmlLink ? 'Klik untuk buka di Google Calendar' : undefined,
+        action: res.data.htmlLink ? { label: 'Buka', onClick: () => window.open(res.data.htmlLink, '_blank') } : undefined
+      });
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Gagal sync';
       if (msg.includes('belum terhubung')) toast.error('Hubungkan Google Calendar di Pengaturan');
@@ -171,6 +174,11 @@ export default function BookingDetailPage() {
       <div className="flex items-center gap-3">
         <h2 className="text-xl font-bold">{booking.bookingCode}</h2>
         <Badge className={statusColors[booking.status]}>{statusLabels[booking.status]}</Badge>
+        {booking.calendarSynced && (
+          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            <CalendarDays className="h-3 w-3 mr-1" /> Tersync
+          </Badge>
+        )}
       </div>
 
       {booking.sessionTime && endTime && (
