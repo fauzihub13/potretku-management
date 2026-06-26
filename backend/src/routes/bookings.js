@@ -268,10 +268,15 @@ router.get('/:id/invoice', auth, async (req, res) => {
       .text('DETAIL SESI', sx2 + 10, sy + 8);
     doc.fontSize(8).font('Helvetica').fillColor(black);
     var ssy = sy + 22;
-    doc.text('Acara    : ' + booking.eventType, sx2 + 10, ssy, { width: halfW - 20 }); ssy += 13;
-    doc.text('Tanggal  : ' + formatDate(booking.sessionDate), sx2 + 10, ssy, { width: halfW - 20 }); ssy += 13;
-    if (booking.sessionTime) { doc.text('Jam      : ' + booking.sessionTime + ' WIB', sx2 + 10, ssy, { width: halfW - 20 }); ssy += 13; }
-    if (booking.location) { doc.text('Lokasi   : ' + booking.location, sx2 + 10, ssy, { width: halfW - 20 }); }
+    var sLX = sx2 + 10;
+    var sVX = sx2 + 62;
+    var sW = halfW - 72;
+    doc.text('Acara', sLX, ssy, { width: 50 });
+    doc.text(': ' + booking.eventType, sVX, ssy, { width: sW }); ssy += 13;
+    doc.text('Tanggal', sLX, ssy, { width: 50 });
+    doc.text(': ' + formatDate(booking.sessionDate), sVX, ssy, { width: sW }); ssy += 13;
+    if (booking.sessionTime) { doc.text('Jam', sLX, ssy, { width: 50 }); doc.text(': ' + booking.sessionTime + ' WIB', sVX, ssy, { width: sW }); ssy += 13; }
+    if (booking.location) { doc.text('Lokasi', sLX, ssy, { width: 50 }); doc.text(': ' + booking.location, sVX, ssy, { width: sW }); }
 
     // === TABLE ===
     var ty = 262;
@@ -358,7 +363,7 @@ router.get('/:id/invoice', auth, async (req, res) => {
     rowY += 10;
 
     // Sisa Bayar
-    var remaining = booking.totalAmount - (booking.dpPaid ? booking.dpAmount : 0);
+    var remaining = booking.totalAmount - booking.dpAmount;
     doc.fontSize(12).font('Helvetica-Bold').fillColor(purple)
       .text('SISA BAYAR', totX, rowY, { width: totLabelW });
     doc.text(formatRp(remaining), totValX, rowY, { width: totValW, align: 'right' });

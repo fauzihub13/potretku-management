@@ -75,7 +75,7 @@ export default function InvoicesPage() {
   const handleSendWhatsApp = (b: any) => {
     const phone = b.clientPhone?.replace(/[^0-9]/g, '');
     if (!phone) return toast.error('Nomor telepon klien tidak tersedia');
-    const remaining = b.totalAmount - (b.dpPaid ? b.dpAmount : 0);
+    const remaining = b.totalAmount - b.dpAmount;
     const msg = `Halo ${b.clientName}! 👋\n\n` +
       `Berikut informasi pemesanan Anda:\n` +
       `📋 Kode: *${b.bookingCode}*\n` +

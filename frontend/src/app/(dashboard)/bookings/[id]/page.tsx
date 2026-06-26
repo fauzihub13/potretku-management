@@ -103,7 +103,7 @@ export default function BookingDetailPage() {
   const handleSendWhatsApp = () => {
     const phone = booking.clientPhone?.replace(/[^0-9]/g, '');
     if (!phone) return toast.error('Nomor telepon klien tidak tersedia');
-    const remaining = booking.totalAmount - (booking.dpPaid ? booking.dpAmount : 0);
+    const remaining = booking.totalAmount - booking.dpAmount;
     const msg = `Halo ${booking.clientName}! 👋\n\n` +
       `Berikut informasi pemesanan Anda:\n` +
       `📋 Kode: *${booking.bookingCode}*\n` +
