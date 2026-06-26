@@ -113,7 +113,8 @@ export default function BookingsPage() {
                     <th className="text-left p-3 font-medium text-zinc-500">Kode</th>
                     <th className="text-left p-3 font-medium text-zinc-500">Klien</th>
                     <th className="text-left p-3 font-medium text-zinc-500">Acara</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Tanggal</th>
+                    <th className="text-left p-3 font-medium text-zinc-500">Tanggal Sesi</th>
+                    <th className="text-left p-3 font-medium text-zinc-500">Dibuat</th>
                     <th className="text-left p-3 font-medium text-zinc-500">Paket</th>
                     <th className="text-left p-3 font-medium text-zinc-500">Total</th>
                     <th className="text-left p-3 font-medium text-zinc-500">Status</th>
@@ -122,9 +123,9 @@ export default function BookingsPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Memuat data...</td></tr>
+                    <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Memuat data...</td></tr>
                   ) : bookings.length === 0 ? (
-                    <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Belum ada pemesanan</td></tr>
+                    <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Belum ada pemesanan</td></tr>
                   ) : bookings.map((b) => (
                     <tr key={b.id} className="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                       <td className="p-3 font-mono text-xs">{b.bookingCode}</td>
@@ -140,6 +141,11 @@ export default function BookingsPage() {
                           <p>{new Date(b.sessionDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                           {b.sessionTime && <p className="text-xs text-zinc-500 font-mono">{b.sessionTime} WIB</p>}
                         </div>
+                      </td>
+                      <td className="p-3 text-xs text-zinc-500">
+                        {new Date(b.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        <br />
+                        <span className="font-mono">{new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                       </td>
                       <td className="p-3">{b.packageName}</td>
                       <td className="p-3 font-medium">{formatCurrency(b.totalAmount)}</td>
@@ -181,6 +187,7 @@ export default function BookingsPage() {
                   <div className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {new Date(b.sessionDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                   {b.sessionTime && <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /> {b.sessionTime} WIB</div>}
                   {b.location && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {b.location}</div>}
+                  <p className="text-zinc-400">Dibuat: {new Date(b.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} {new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <div>

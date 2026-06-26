@@ -123,6 +123,14 @@ export default function BookingDetailPage() {
             <div className="flex justify-between"><span className="text-zinc-500">Nama</span><span className="font-medium">{booking.clientName}</span></div>
             <div className="flex justify-between"><span className="text-zinc-500">Email</span><span>{booking.clientEmail || '-'}</span></div>
             <div className="flex justify-between"><span className="text-zinc-500">Telepon</span><span>{booking.clientPhone || '-'}</span></div>
+            <div className="flex justify-between pt-2 border-t mt-2">
+              <span className="text-zinc-500">Dibuat</span>
+              <span className="text-xs">
+                {new Date(booking.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                {' '}
+                {new Date(booking.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+              </span>
+            </div>
           </CardContent>
         </Card>
 
