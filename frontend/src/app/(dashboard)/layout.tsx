@@ -10,6 +10,7 @@ const pageTitles: Record<string, string> = {
   '/calendar': 'Kalender',
   '/services': 'Layanan & Paket',
   '/team': 'Tim & Freelancer',
+  '/team-payments': 'Bayaran Tim',
   '/finance': 'Ringkasan Keuangan',
   '/invoices': 'Faktur & Pelunasan',
   '/templates': 'Templat',
