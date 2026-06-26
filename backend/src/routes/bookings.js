@@ -242,7 +242,7 @@ router.get('/:id/invoice', auth, async (req, res) => {
 
     // Additional costs
     const additionalCosts = JSON.parse(booking.addons || '[]');
-    additionalCosts.forEach((addon: any) => {
+    additionalCosts.forEach(function(addon) {
       doc.text(addon.name || 'Tambahan', 50, doc.y + 5, { width: 300 });
       doc.text(formatRp(addon.price || 0), 400, doc.y - 15, { width: 145, align: 'right' });
     });
