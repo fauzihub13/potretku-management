@@ -59,10 +59,11 @@ export default function CalendarPage() {
   }, [year, month]);
 
   const getBookingsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
     return bookings.filter(b => {
-      const bDate = new Date(b.sessionDate).toISOString().split('T')[0];
-      return bDate === dateStr;
+      const bDate = new Date(b.sessionDate);
+      return bDate.getFullYear() === date.getFullYear()
+        && bDate.getMonth() === date.getMonth()
+        && bDate.getDate() === date.getDate();
     });
   };
 
