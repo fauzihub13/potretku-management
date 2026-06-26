@@ -214,7 +214,7 @@ export default function CreateBookingPage() {
                     <SelectValue placeholder="Pilih freelancer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {team.map((t) => (
+                    {team.filter(t => t.isActive).map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name} ({t.role})
                       </SelectItem>

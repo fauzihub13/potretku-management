@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { ViewToggle, Pagination } from '@/components/view-controls';
 import { Users, Phone, Mail, Trash2, Edit, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -19,7 +20,7 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', role: '', email: '', phone: '', tags: '[]' });
+  const [form, setForm] = useState({ name: '', role: '', email: '', phone: '', tags: '[]', isActive: true });
   const [view, setView] = useState<'table' | 'card'>('card');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -34,8 +35,8 @@ export default function TeamPage() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openCreate = () => { setForm({ name: '', role: '', email: '', phone: '', tags: '[]' }); setEditId(null); setDialog(true); };
-  const openEdit = (m: any) => { setForm({ name: m.name, role: m.role, email: m.email || '', phone: m.phone || '', tags: m.tags || '[]' }); setEditId(m.id); setDialog(true); };
+  const openCreate = () => { setForm({ name: '', role: '', email: '', phone: '', tags: '[]', isActive: true }); setEditId(null); setDialog(true); };
+  const openEdit = (m: any) => { setForm({ name: m.name, role: m.role, email: m.email || '', phone: m.phone || '', tags: m.tags || '[]', isActive: m.isActive }); setEditId(m.id); setDialog(true); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +45,14 @@ export default function TeamPage() {
       else { await api.post('/team', form); toast.success('Anggota ditambahkan'); }
       setDialog(false); fetchMembers();
     } catch (err: any) { toast.error(err.response?.data?.error || 'Gagal'); }
+  };
+
+  const handleToggleActive = async (id: string, current: boolean) => {
+    try {
+      await api.put(`/team/${id}`, { isActive: !current });
+      toast.success(current ? 'Dinonaktifkan' : 'Diaktifkan');
+      fetchMembers();
+    } catch { toast.error('Gagal'); }
   };
 
   const handleDelete = async (id: string) => {
@@ -76,7 +85,7 @@ export default function TeamPage() {
                   <th className="text-left p-3 font-medium text-zinc-500">Peran</th>
                   <th className="text-left p-3 font-medium text-zinc-500">Telepon</th>
                   <th className="text-left p-3 font-medium text-zinc-500">Email</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Status</th>
+                  <th className="text-left p-3 font-medium text-zinc-500">Aktif</th>
                   <th className="text-left p-3 font-medium text-zinc-500">Aksi</th>
                 </tr>
               </thead>
@@ -84,7 +93,7 @@ export default function TeamPage() {
                 {paged.length === 0 ? (
                   <tr><td colSpan={6} className="p-8 text-center text-zinc-500">Belum ada anggota tim</td></tr>
                 ) : paged.map(m => (
-                  <tr key={m.id} className="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                  <tr key={m.id} className={`border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 ${!m.isActive ? 'opacity-50' : ''}`}>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-700">{m.name.charAt(0)}</div>
@@ -94,7 +103,9 @@ export default function TeamPage() {
                     <td className="p-3"><Badge className={roleColors[m.role] || 'bg-zinc-100 text-zinc-800'}>{m.role}</Badge></td>
                     <td className="p-3 text-xs">{m.phone || '-'}</td>
                     <td className="p-3 text-xs">{m.email || '-'}</td>
-                    <td className="p-3"><Badge variant={m.isActive ? 'default' : 'secondary'}>{m.isActive ? 'Aktif' : 'Nonaktif'}</Badge></td>
+                    <td className="p-3">
+                      <Switch checked={m.isActive} onCheckedChange={() => handleToggleActive(m.id, m.isActive)} />
+                    </td>
                     <td className="p-3">
                       <div className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={() => openEdit(m)}><Edit className="h-4 w-4" /></Button>
@@ -114,7 +125,7 @@ export default function TeamPage() {
           {paged.length === 0 ? (
             <div className="col-span-full text-center py-12 text-zinc-500">Belum ada anggota tim</div>
           ) : paged.map(m => (
-            <Card key={m.id} className="hover:shadow-md transition-shadow">
+            <Card key={m.id} className={`hover:shadow-md transition-shadow ${!m.isActive ? 'opacity-50' : ''}`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -124,7 +135,7 @@ export default function TeamPage() {
                       <Badge className={roleColors[m.role] || 'bg-zinc-100 text-zinc-800'}>{m.role}</Badge>
                     </div>
                   </div>
-                  <Badge variant={m.isActive ? 'default' : 'secondary'}>{m.isActive ? 'Aktif' : 'Nonaktif'}</Badge>
+                  <Switch checked={m.isActive} onCheckedChange={() => handleToggleActive(m.id, m.isActive)} />
                 </div>
                 <div className="mt-3 space-y-1 text-sm text-zinc-500">
                   {m.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {m.phone}</div>}
@@ -150,6 +161,10 @@ export default function TeamPage() {
             <div className="space-y-2"><Label>Peran *</Label><Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Fotografer, Videografer, Editor" required /></div>
             <div className="space-y-2"><Label>Telepon</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+            <div className="flex items-center gap-3">
+              <Switch checked={form.isActive} onCheckedChange={(v) => setForm(f => ({ ...f, isActive: v }))} />
+              <Label>Aktif</Label>
+            </div>
             <div className="flex gap-2 justify-end"><Button type="button" variant="outline" onClick={() => setDialog(false)}>Batal</Button><Button type="submit" className="bg-purple-600 hover:bg-purple-700">Simpan</Button></div>
           </form>
         </DialogContent>

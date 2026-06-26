@@ -248,7 +248,7 @@ export default function EditBookingPage() {
                     <SelectValue placeholder="Pilih" />
                   </SelectTrigger>
                   <SelectContent>
-                    {team.map((t) => (
+                    {team.filter(t => t.isActive).map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
                       </SelectItem>
