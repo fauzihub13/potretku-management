@@ -176,182 +176,217 @@ router.get('/:id/invoice', auth, async (req, res) => {
       in_progress: '#6366f1', completed: '#22c55e', cancelled: '#ef4444'
     };
 
-    const formatRp = function(n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); };
-    const formatDate = function(d) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); };
+    var formatRp = function(n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); };
+    var formatDate = function(d) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); };
 
-    const doc = new PDFDocument({ size: 'A4', margin: 0 });
+    var doc = new PDFDocument({ size: 'A4', margin: 0 });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=faktur-' + booking.bookingCode + '.pdf');
     doc.pipe(res);
 
+    // Constants
+    var W = 595.28;
+    var H = 841.89;
+    var M = 50;
+    var contentW = W - (M * 2); // 495.28
     var purple = '#7c3aed';
     var darkPurple = '#5b21b6';
     var gray = '#6b7280';
     var lightGray = '#f9fafb';
     var border = '#e5e7eb';
     var black = '#111827';
-    var W = 595.28;
-    var LM = 50;
-    var RM = W - 50;
 
-    // === HEADER BAND ===
-    doc.rect(0, 0, W, 100).fill(purple);
-    doc.rect(0, 98, W, 4).fill(darkPurple);
+    // === HEADER BAND (full width) ===
+    doc.rect(0, 0, W, 90).fill(purple);
+    doc.rect(0, 88, W, 4).fill(darkPurple);
 
-    doc.fontSize(22).font('Helvetica-Bold').fillColor('#ffffff')
-      .text(user.studioName || 'Studio', LM, 25, { width: 300 });
-    doc.fontSize(9).font('Helvetica').fillColor('rgba(255,255,255,0.8)');
-    var studioInfo = '';
-    if (user.studioAddress) studioInfo += user.studioAddress;
-    if (user.studioPhone) studioInfo += (studioInfo ? '  |  ' : '') + user.studioPhone;
-    studioInfo += (studioInfo ? '  |  ' : '') + user.email;
-    doc.text(studioInfo, LM, 52, { width: 400 });
+    doc.fontSize(20).font('Helvetica-Bold').fillColor('#ffffff')
+      .text(user.studioName || 'Studio', M, 22, { width: 300 });
+    doc.fontSize(8).font('Helvetica').fillColor('rgba(255,255,255,0.8)');
+    var infoLine = (user.studioAddress || '') + (user.studioPhone ? '  |  ' + user.studioPhone : '') + '  |  ' + user.email;
+    doc.text(infoLine, M, 48, { width: 380 });
 
-    doc.fontSize(28).font('Helvetica-Bold').fillColor('#ffffff')
-      .text('FAKTUR', RM - 150, 22, { width: 150, align: 'right' });
+    // FAKTUR title
+    doc.fontSize(26).font('Helvetica-Bold').fillColor('#ffffff')
+      .text('FAKTUR', M, 18, { width: contentW, align: 'right' });
 
-    // === INVOICE INFO BOX ===
-    var infoY = 120;
-    doc.roundedRect(LM, infoY, RM - LM, 55, 6).fill(lightGray);
+    // === INVOICE INFO ROW ===
+    var iy = 108;
+    doc.roundedRect(M, iy, contentW, 48, 4).fill(lightGray);
 
-    doc.fontSize(8).font('Helvetica').fillColor(gray);
-    doc.text('NO. FAKTUR', LM + 12, infoY + 10, { width: 100 });
-    doc.text('TANGGA', LM + 140, infoY + 10, { width: 100 });
-    doc.text('STATUS', LM + 290, infoY + 10, { width: 100 });
-    doc.text('JATUH TEMPO', LM + 400, infoY + 10, { width: 100 });
+    var col1 = M + 10;
+    var col2 = M + 120;
+    var col3 = M + 270;
+    var col4 = M + 380;
+
+    doc.fontSize(7).font('Helvetica').fillColor(gray);
+    doc.text('NO. FAKTUR', col1, iy + 8, { width: 90 });
+    doc.text('TANGGA', col2, iy + 8, { width: 100 });
+    doc.text('STATUS', col3, iy + 8, { width: 90 });
+    doc.text('JATUH TEMPO', col4, iy + 8, { width: 90 });
 
     doc.fontSize(10).font('Helvetica-Bold').fillColor(black);
-    doc.text(booking.bookingCode, LM + 12, infoY + 25, { width: 120 });
-    doc.text(formatDate(booking.createdAt), LM + 140, infoY + 25, { width: 130 });
+    doc.text(booking.bookingCode, col1, iy + 22, { width: 100 });
+    doc.text(formatDate(booking.createdAt), col2, iy + 22, { width: 140 });
 
-    // Status badge
+    // Status badge - centered text
     var stColor = statusColor[booking.status] || gray;
     var stLabel = statusMap[booking.status] || booking.status;
-    doc.roundedRect(LM + 290, infoY + 22, 85, 18, 4).fill(stColor);
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff')
-      .text(stLabel, LM + 290, infoY + 26, { width: 85, align: 'center' });
+    var badgeW = 90;
+    var badgeH = 16;
+    var badgeX = col3;
+    var badgeY = iy + 20;
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3).fill(stColor);
+    doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff');
+    var stTextW = doc.widthOfString(stLabel);
+    doc.text(stLabel, badgeX + (badgeW - stTextW) / 2, badgeY + 4, { width: badgeW, align: 'center' });
 
     // Deadline
     var deadline = booking.deadline ? formatDate(booking.deadline) : '-';
     doc.fontSize(10).font('Helvetica-Bold').fillColor(black)
-      .text(deadline, LM + 400, infoY + 25, { width: 130 });
+      .text(deadline, col4, iy + 22, { width: 100 });
 
-    // === CLIENT & SESSION - SIDE BY SIDE ===
-    var sectionY = 195;
+    // === CLIENT & SESSION (2 columns) ===
+    var sy = 172;
+    var halfW = (contentW - 10) / 2; // 242.64
 
     // Client box
-    doc.roundedRect(LM, sectionY, 235, 85, 6).lineWidth(0.5).stroke(border);
-    doc.fontSize(8).font('Helvetica-Bold').fillColor(purple)
-      .text('DITUJUKAN KE', LM + 12, sectionY + 10);
+    doc.roundedRect(M, sy, halfW, 72, 4).lineWidth(0.5).stroke(border);
+    doc.fontSize(7).font('Helvetica-Bold').fillColor(purple)
+      .text('DITUJUKAN KE', M + 10, sy + 8);
     doc.fontSize(10).font('Helvetica-Bold').fillColor(black)
-      .text(booking.clientName, LM + 12, sectionY + 24, { width: 210 });
-    doc.fontSize(9).font('Helvetica').fillColor(gray);
-    var cy = sectionY + 40;
-    if (booking.clientEmail) { doc.text(booking.clientEmail, LM + 12, cy, { width: 210 }); cy += 13; }
-    if (booking.clientPhone) { doc.text(booking.clientPhone, LM + 12, cy, { width: 210 }); cy += 13; }
+      .text(booking.clientName, M + 10, sy + 22, { width: halfW - 20 });
+    doc.fontSize(8).font('Helvetica').fillColor(gray);
+    var cy = sy + 38;
+    if (booking.clientEmail) { doc.text(booking.clientEmail, M + 10, cy, { width: halfW - 20 }); cy += 12; }
+    if (booking.clientPhone) { doc.text(booking.clientPhone, M + 10, cy, { width: halfW - 20 }); }
 
     // Session box
-    doc.roundedRect(LM + 250, sectionY, 295, 85, 6).lineWidth(0.5).stroke(border);
-    doc.fontSize(8).font('Helvetica-Bold').fillColor(purple)
-      .text('DETAIL SESI', LM + 262, sectionY + 10);
-    doc.fontSize(9).font('Helvetica').fillColor(black);
-    var sy = sectionY + 25;
-    doc.text('Acara    : ' + booking.eventType, LM + 262, sy, { width: 270 }); sy += 14;
-    doc.text('Tanggal  : ' + formatDate(booking.sessionDate), LM + 262, sy, { width: 270 }); sy += 14;
-    if (booking.sessionTime) { doc.text('Jam      : ' + booking.sessionTime + ' WIB', LM + 262, sy, { width: 270 }); sy += 14; }
-    if (booking.location) { doc.text('Lokasi   : ' + booking.location, LM + 262, sy, { width: 270 }); }
+    var sx2 = M + halfW + 10;
+    doc.roundedRect(sx2, sy, halfW, 72, 4).lineWidth(0.5).stroke(border);
+    doc.fontSize(7).font('Helvetica-Bold').fillColor(purple)
+      .text('DETAIL SESI', sx2 + 10, sy + 8);
+    doc.fontSize(8).font('Helvetica').fillColor(black);
+    var ssy = sy + 22;
+    doc.text('Acara    : ' + booking.eventType, sx2 + 10, ssy, { width: halfW - 20 }); ssy += 13;
+    doc.text('Tanggal  : ' + formatDate(booking.sessionDate), sx2 + 10, ssy, { width: halfW - 20 }); ssy += 13;
+    if (booking.sessionTime) { doc.text('Jam      : ' + booking.sessionTime + ' WIB', sx2 + 10, ssy, { width: halfW - 20 }); ssy += 13; }
+    if (booking.location) { doc.text('Lokasi   : ' + booking.location, sx2 + 10, ssy, { width: halfW - 20 }); }
 
     // === TABLE ===
-    var tableY = 300;
+    var ty = 262;
 
-    // Table header
-    doc.roundedRect(LM, tableY, RM - LM, 25, 4).fill(purple);
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff');
-    doc.text('DESKRIPSI', LM + 12, tableY + 8, { width: 280 });
-    doc.text('QTY', LM + 300, tableY + 8, { width: 40, align: 'center' });
-    doc.text('HARGA', LM + 350, tableY + 8, { width: 100, align: 'right' });
-    doc.text('SUBTOTAL', RM - 120, tableY + 8, { width: 108, align: 'right' });
+    // Column positions (total width = contentW = 495.28)
+    // Col1: Deskripsi (0 - 250) width=250
+    // Col2: Qty (250 - 290) width=40
+    // Col3: Harga (290 - 390) width=100
+    // Col4: Subtotal (390 - 495) width=105
+    var tDesc = M;
+    var tQty = M + 250;
+    var tHrg = M + 290;
+    var tSub = M + 390;
+    var cDesc = 240;
+    var cQty = 35;
+    var cHrg = 95;
+    var cSub = 100;
 
-    var rowY = tableY + 30;
-    var rowNum = 0;
+    // Header row
+    doc.roundedRect(M, ty, contentW, 22, 3).fill(purple);
+    doc.fontSize(7).font('Helvetica-Bold').fillColor('#ffffff');
+    doc.text('DESKRIPSI', tDesc + 8, ty + 7, { width: cDesc });
+    doc.text('QTY', tQty + 2, ty + 7, { width: cQty, align: 'center' });
+    doc.text('HARGA', tHrg, ty + 7, { width: cHrg, align: 'right' });
+    doc.text('SUBTOTAL', tSub + 5, ty + 7, { width: cSub, align: 'right' });
+
+    var rowY = ty + 26;
+    var rowH = 24;
+    var rowCount = 0;
 
     // Package row
-    if (rowNum % 2 === 0) doc.rect(LM, rowY, RM - LM, 28).fill(lightGray);
+    if (rowCount % 2 === 0) { doc.rect(M, rowY, contentW, rowH).fill(lightGray); }
     doc.fontSize(9).font('Helvetica-Bold').fillColor(black);
-    doc.text(booking.packageName, LM + 12, rowY + 8, { width: 280 });
+    doc.text(booking.packageName, tDesc + 8, rowY + 6, { width: cDesc });
     doc.font('Helvetica').fillColor(gray);
-    doc.text('1', LM + 300, rowY + 8, { width: 40, align: 'center' });
-    doc.text(formatRp(booking.packagePrice || booking.totalAmount), LM + 350, rowY + 8, { width: 100, align: 'right' });
+    doc.text('1', tQty + 2, rowY + 6, { width: cQty, align: 'center' });
+    doc.text(formatRp(booking.packagePrice || booking.totalAmount), tHrg, rowY + 6, { width: cHrg, align: 'right' });
     doc.font('Helvetica-Bold').fillColor(black);
-    doc.text(formatRp(booking.totalAmount), RM - 120, rowY + 8, { width: 108, align: 'right' });
-    rowY += 28;
-    rowNum++;
+    doc.text(formatRp(booking.totalAmount), tSub + 5, rowY + 6, { width: cSub, align: 'right' });
+    rowY += rowH;
+    rowCount++;
 
-    // Additional costs from addons
+    // Addon rows
     var addons = JSON.parse(booking.addons || '[]');
     addons.forEach(function(addon) {
-      if (rowNum % 2 === 0) doc.rect(LM, rowY, RM - LM, 25).fill(lightGray);
-      doc.fontSize(9).font('Helvetica').fillColor(black);
-      doc.text(addon.name || 'Tambahan', LM + 12, rowY + 6, { width: 280 });
-      doc.fillColor(gray).text('1', LM + 300, rowY + 6, { width: 40, align: 'center' });
-      doc.text(formatRp(addon.price || 0), LM + 350, rowY + 6, { width: 100, align: 'right' });
+      if (rowCount % 2 === 0) { doc.rect(M, rowY, contentW, rowH).fill(lightGray); }
+      doc.fontSize(8).font('Helvetica').fillColor(black);
+      doc.text(addon.name || 'Tambahan', tDesc + 8, rowY + 6, { width: cDesc });
+      doc.fillColor(gray).text('1', tQty + 2, rowY + 6, { width: cQty, align: 'center' });
+      doc.text(formatRp(addon.price || 0), tHrg, rowY + 6, { width: cHrg, align: 'right' });
       doc.font('Helvetica-Bold').fillColor(black);
-      doc.text(formatRp(addon.price || 0), RM - 120, rowY + 6, { width: 108, align: 'right' });
-      rowY += 25;
-      rowNum++;
+      doc.text(formatRp(addon.price || 0), tSub + 5, rowY + 6, { width: cSub, align: 'right' });
+      rowY += rowH;
+      rowCount++;
     });
 
-    // Separator
-    rowY += 5;
-    doc.moveTo(LM, rowY).lineTo(RM, rowY).lineWidth(0.5).stroke(border);
+    // Bottom border of table
+    doc.moveTo(M, rowY).lineTo(M + contentW, rowY).lineWidth(0.5).stroke(border);
+    rowY += 12;
+
+    // === TOTALS (right-aligned block) ===
+    var totX = M + 270;
+    var totW = contentW - 270; // ~225
+    var totLabelW = 110;
+    var totValX = totX + totLabelW;
+    var totValW = totW - totLabelW - 10;
+
+    // Subtotal
+    doc.fontSize(9).font('Helvetica').fillColor(gray)
+      .text('Subtotal', totX, rowY, { width: totLabelW });
+    doc.fillColor(black)
+      .text(formatRp(booking.totalAmount), totValX, rowY, { width: totValW, align: 'right' });
+    rowY += 16;
+
+    // DP
+    doc.fillColor(gray)
+      .text('DP', totX, rowY, { width: totLabelW });
+    doc.fillColor(booking.dpPaid ? '#22c55e' : '#ef4444')
+      .text((booking.dpPaid ? '- ' : '') + formatRp(booking.dpAmount), totValX, rowY, { width: totValW, align: 'right' });
+    rowY += 6;
+
+    // Separator line
+    doc.moveTo(totX, rowY).lineTo(M + contentW, rowY).lineWidth(1).stroke(purple);
     rowY += 10;
 
-    // === TOTALS ===
-    var totalX = RM - 230;
-    var totLabelW = 120;
-    var totValW = 108;
-
-    doc.fontSize(9).font('Helvetica').fillColor(gray);
-    doc.text('Subtotal', totalX, rowY, { width: totLabelW });
-    doc.text(formatRp(booking.totalAmount), RM - 12, rowY, { width: totValW, align: 'right' });
-    rowY += 18;
-
-    doc.text('DP (' + formatRp(booking.dpAmount) + ')', totalX, rowY, { width: totLabelW });
-    doc.fillColor(booking.dpPaid ? '#22c55e' : '#ef4444');
-    doc.text(booking.dpPaid ? '- ' + formatRp(booking.dpAmount) : 'Belum', RM - 12, rowY, { width: totValW, align: 'right' });
-    rowY += 18;
-
-    doc.moveTo(totalX, rowY).lineTo(RM, rowY).lineWidth(1).stroke(purple);
-    rowY += 8;
-
+    // Sisa Bayar
     var remaining = booking.totalAmount - (booking.dpPaid ? booking.dpAmount : 0);
-    doc.fontSize(12).font('Helvetica-Bold').fillColor(purple);
-    doc.text('SISA BAYAR', totalX, rowY, { width: totLabelW });
-    doc.text(formatRp(remaining), RM - 12, rowY, { width: totValW, align: 'right' });
+    doc.fontSize(12).font('Helvetica-Bold').fillColor(purple)
+      .text('SISA BAYAR', totX, rowY, { width: totLabelW });
+    doc.text(formatRp(remaining), totValX, rowY, { width: totValW, align: 'right' });
 
     // === PAYMENT STATUS BOX ===
-    rowY += 40;
-    doc.roundedRect(LM, rowY, RM - LM, 40, 6).fill(lightGray);
-    doc.fontSize(8).font('Helvetica-Bold').fillColor(gray).text('STATUS PEMBAYARAN', LM + 12, rowY + 8);
+    rowY += 35;
+    doc.roundedRect(M, rowY, contentW, 35, 4).fill(lightGray);
+    doc.fontSize(7).font('Helvetica-Bold').fillColor(gray)
+      .text('STATUS PEMBAYARAN', M + 10, rowY + 8);
 
-    // DP status dot
-    doc.circle(LM + 12, rowY + 27, 4).fill(booking.dpPaid ? '#22c55e' : '#f59e0b');
-    doc.fontSize(9).font('Helvetica').fillColor(black)
-      .text('DP: ' + (booking.dpPaid ? 'Lunas' : 'Belum'), LM + 22, rowY + 22);
+    // DP dot + text
+    doc.circle(M + 10, rowY + 24, 3.5).fill(booking.dpPaid ? '#22c55e' : '#f59e0b');
+    doc.fontSize(8).font('Helvetica').fillColor(black)
+      .text('DP: ' + (booking.dpPaid ? 'Lunas' : 'Belum'), M + 18, rowY + 19);
 
-    // Final status dot
-    doc.circle(LM + 150, rowY + 27, 4).fill(booking.finalPaid ? '#22c55e' : '#f59e0b');
-    doc.text('Pelunasan: ' + (booking.finalPaid ? 'Lunas' : 'Belum'), LM + 160, rowY + 22);
+    // Final dot + text
+    doc.circle(M + 120, rowY + 24, 3.5).fill(booking.finalPaid ? '#22c55e' : '#f59e0b');
+    doc.text('Pelunasan: ' + (booking.finalPaid ? 'Lunas' : 'Belum'), M + 128, rowY + 19);
 
     // === FOOTER ===
-    var footerY = rowY + 65;
-    doc.moveTo(LM, footerY).lineTo(RM, footerY).lineWidth(0.5).stroke(border);
-    footerY += 15;
+    var footerY = rowY + 55;
+    doc.moveTo(M, footerY).lineTo(M + contentW, footerY).lineWidth(0.3).stroke(border);
+    footerY += 12;
     doc.fontSize(8).font('Helvetica').fillColor(gray)
-      .text('Terima kasih atas kepercayaan Anda.', LM, footerY, { width: RM - LM, align: 'center' });
-    footerY += 13;
+      .text('Terima kasih atas kepercayaan Anda.', M, footerY, { width: contentW, align: 'center' });
+    footerY += 12;
     doc.fontSize(7).fillColor('#9ca3af')
-      .text((user.studioName || '') + '  |  ' + user.email + '  |  Dicetak: ' + formatDate(new Date()), LM, footerY, { width: RM - LM, align: 'center' });
+      .text((user.studioName || '') + '  |  ' + user.email + '  |  Dicetak: ' + formatDate(new Date()), M, footerY, { width: contentW, align: 'center' });
 
     doc.end();
   } catch (err) {
