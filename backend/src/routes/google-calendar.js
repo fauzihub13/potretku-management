@@ -27,11 +27,19 @@ router.get('/auth-url', auth, async (req, res) => {
 router.get('/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
+    console.log('[GC] Callback received, code:', code ? 'present' : 'missing', 'state:', state);
+    
+    if (!code) {
+      console.log('[GC] No code in callback');
+      return res.redirect((process.env.FRONTEND_URL || 'http://localhost:3000') + '/settings?google=error&reason=no_code');
+    }
+    
     const oauth2Client = getOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
+    console.log('[GC] Token received, access:', tokens.access_token ? 'present' : 'missing', 'refresh:', tokens.refresh_token ? 'present' : 'missing');
+    
     oauth2Client.setCredentials(tokens);
 
-    // Save tokens to user settings
     await prisma.setting.update({
       where: { userId: state },
       data: {
@@ -41,9 +49,11 @@ router.get('/callback', async (req, res) => {
       }
     });
 
+    console.log('[GC] Tokens saved for user:', state);
     res.redirect((process.env.FRONTEND_URL || 'http://localhost:3000') + '/settings?google=connected');
   } catch (err) {
-    res.redirect((process.env.FRONTEND_URL || 'http://localhost:3000') + '/settings?google=error');
+    console.error('[GC] Callback error:', err.message, err.response?.data);
+    res.redirect((process.env.FRONTEND_URL || 'http://localhost:3000') + '/settings?google=error&reason=' + encodeURIComponent(err.message));
   }
 });
 
