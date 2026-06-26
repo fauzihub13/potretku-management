@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate, statusColors, statusLabels } from '@/lib/utils-helpers';
-import { ArrowLeft, Edit, CheckCircle, Clock, ArrowRight, FileText, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Edit, CheckCircle, Clock, ArrowRight, FileText, MessageCircle, CalendarDays, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 function addMinutes(time: string, hours: number, minutes: number): string {
@@ -117,6 +117,26 @@ export default function BookingDetailPage() {
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const handleSyncCalendar = async () => {
+    try {
+      const res = await api.post(`/google-calendar/sync/${booking.id}`);
+      setBooking((b: any) => ({ ...b, calendarSynced: true, googleEventId: res.data.eventId }));
+      toast.success('Tersinkronisasi ke Google Calendar');
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Gagal sync';
+      if (msg.includes('belum terhubung')) toast.error('Hubungkan Google Calendar di Pengaturan');
+      else toast.error(msg);
+    }
+  };
+
+  const handleUnsyncCalendar = async () => {
+    try {
+      await api.delete(`/google-calendar/sync/${booking.id}`);
+      setBooking((b: any) => ({ ...b, calendarSynced: false, googleEventId: null }));
+      toast.success('Dihapus dari Google Calendar');
+    } catch { toast.error('Gagal'); }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" /></div>;
   if (!booking) return <div className="text-center py-10">Pemesanan tidak ditemukan</div>;
 
@@ -128,11 +148,20 @@ export default function BookingDetailPage() {
         </Button>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleDownloadInvoice}>
-            <FileText className="h-4 w-4 mr-1" /> Faktur PDF
+            <FileText className="h-4 w-4 mr-1" /> Faktur
           </Button>
           <Button variant="outline" size="sm" onClick={handleSendWhatsApp} className="text-green-600 border-green-300 hover:bg-green-50">
             <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
           </Button>
+          {booking.calendarSynced ? (
+            <Button variant="outline" size="sm" onClick={handleUnsyncCalendar} className="text-orange-600 border-orange-300 hover:bg-orange-50">
+              <CalendarDays className="h-4 w-4 mr-1" /> Batal Sync
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleSyncCalendar} className="text-blue-600 border-blue-300 hover:bg-blue-50">
+              <RefreshCw className="h-4 w-4 mr-1" /> Sync Kalender
+            </Button>
+          )}
           <Button variant="outline" onClick={() => router.push(`/bookings/${booking.id}/edit`)}>
             <Edit className="h-4 w-4 mr-1" /> Edit
           </Button>

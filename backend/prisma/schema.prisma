@@ -68,6 +68,7 @@ model Booking {
   driveRawPhotos  String?
   driveEditedPhotos String?
   calendarSynced  Boolean   @default(false)
+  googleEventId   String?
   customFields    String?   @default("{}")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -165,6 +166,9 @@ model Setting {
   customStatuses     String? @default("[]")
   eventTypes         String? @default("[\"Wedding\",\"Pre-wedding\",\"Portrait\",\"Event\",\"Commercial\"]")
   googleCalendarId   String?
+  googleAccessToken  String?
+  googleRefreshToken String?
+  googleTokenExpiry  DateTime?
   googleDriveFolderId String?
   telegramChatId     String?
   seoTitle           String?

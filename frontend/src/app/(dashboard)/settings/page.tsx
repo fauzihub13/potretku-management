@@ -8,16 +8,19 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Save } from 'lucide-react';
+import { Save, Link, Unlink, CheckCircle, ExternalLink } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   useEffect(() => {
     api.get('/settings').then(res => setSettings(res.data)).finally(() => setLoading(false));
+    api.get('/google-calendar/status').then(res => setGoogleConnected(res.data.connected)).catch(() => {});
   }, []);
 
   const handleSave = async () => {
@@ -39,6 +42,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'general', label: 'Umum' },
     { id: 'payment', label: 'Pembayaran' },
+    { id: 'google', label: 'Google' },
     { id: 'booking-form', label: 'Formulir Pemesanan' },
     { id: 'seo', label: 'SEO' },
   ];
@@ -93,6 +97,59 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label>URL Gambar QRIS</Label>
               <Input value={settings?.qrisImage || ''} onChange={e => update('qrisImage', e.target.value)} placeholder="URL gambar QRIS" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'google' && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Integrasi Google Calendar</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3 p-4 rounded-lg border">
+              {googleConnected ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Tersambung</p>
+                    <p className="text-xs text-zinc-500">Google Calendar sudah terhubung. Booking akan otomatis tersinkron.</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={async () => {
+                    if (!confirm('Putuskan sambungan Google Calendar?')) return;
+                    await api.post('/google-calendar/disconnect');
+                    setGoogleConnected(false);
+                    toast.success('Google Calendar diputuskan');
+                  }}>
+                    <Unlink className="h-4 w-4 mr-1" /> Putuskan
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link className="h-5 w-5 text-zinc-400" />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Belum tersambung</p>
+                    <p className="text-xs text-zinc-500">Hubungkan Google Calendar untuk sinkron otomatis semua booking.</p>
+                  </div>
+                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700" disabled={connectingGoogle} onClick={async () => {
+                    setConnectingGoogle(true);
+                    try {
+                      const res = await api.get('/google-calendar/auth-url');
+                      window.location.href = res.data.url;
+                    } catch { toast.error('Gagal membuat link otorisasi'); setConnectingGoogle(false); }
+                  }}>
+                    {connectingGoogle ? 'Menghubungkan...' : 'Hubungkan'}
+                  </Button>
+                </>
+              )}
+            </div>
+            <div className="text-xs text-zinc-400 space-y-1">
+              <p>Cara kerja:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>Setelah tersambung, klik tombol sinkron di halaman pemesanan atau kalender</li>
+                <li>Booking akan muncul di Google Calendar Anda</li>
+                <li>Perubahan jam/tanggal otomatis update di Google Calendar</li>
+                <li>Anda bisa memutuskan sambungan kapan saja</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
