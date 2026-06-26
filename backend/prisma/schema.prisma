@@ -53,7 +53,7 @@ model Booking {
   location        String?
   packageName     String
   packagePrice    Float
-  addons          String?   @default("[]")
+  addons          String?   @db.Text
   totalAmount     Float
   dpAmount        Float     @default(0)
   dpPaid          Boolean   @default(false)
@@ -90,9 +90,9 @@ model Service {
   durationMinutes Int      @default(0)
   photoEditCount  Int      @default(0)
   category        String   @default("main")
-  eventTypes      String   @default("[]")
+  eventTypes      String   @db.Text
   city            String?
-  additionalCosts String   @default("[]")
+  additionalCosts String   @db.Text
   location        String?
   isActive        Boolean  @default(true)
   sortOrder       Int      @default(0)
@@ -108,7 +108,7 @@ model TeamMember {
   role      String
   email     String?
   phone     String?
-  tags      String?   @default("[]")
+  tags      String?   @db.Text
   isActive  Boolean   @default(true)
   sortOrder Int       @default(0)
   createdAt DateTime  @default(now())
@@ -160,11 +160,11 @@ model Setting {
   userId            String  @unique
   bookingFormGreeting String?
   settlementGreeting String?
-  paymentMethods     String? @default("[\"bank\",\"qris\",\"cash\"]")
-  bankAccounts       String? @default("[]")
+  paymentMethods     String? @db.Text
+  bankAccounts       String? @db.Text
   qrisImage          String?
-  customStatuses     String? @default("[]")
-  eventTypes         String? @default("[\"Wedding\",\"Pre-wedding\",\"Portrait\",\"Event\",\"Commercial\"]")
+  customStatuses     String? @db.Text
+  eventTypes         String? @db.Text
   googleCalendarId   String?
   googleAccessToken  String?   @db.Text
   googleRefreshToken String?   @db.Text
@@ -181,7 +181,7 @@ model Setting {
   vendorBanner       String?
   vendorPrimaryColor String?   @default("#7c3aed")
   vendorAccentColor  String?   @default("#a78bfa")
-  vendorCustomFields String?   @default("[]")
+  vendorCustomFields String?   @db.Text
   vendorLandingHtml  String?   @db.Text
   vendorTermsHtml    String?   @db.Text
   vendorPhone        String?

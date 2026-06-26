@@ -19,7 +19,14 @@ router.get('/', auth, async (req, res) => {
   try {
     let settings = await prisma.setting.findUnique({ where: { userId: req.userId } });
     if (!settings) {
-      settings = await prisma.setting.create({ data: { userId: req.userId } });
+      settings = await prisma.setting.create({ data: {
+        userId: req.userId,
+        paymentMethods: '["bank","qris","cash"]',
+        bankAccounts: '[]',
+        customStatuses: '[]',
+        eventTypes: '["Wedding","Pre-wedding","Portrait","Event","Commercial"]',
+        vendorCustomFields: '[]'
+      }});
     }
     res.json(settings);
   } catch (err) {
