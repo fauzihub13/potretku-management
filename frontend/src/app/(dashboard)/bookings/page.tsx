@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency, statusColors, statusLabels } from '@/lib/utils-helpers';
 import { ViewToggle, Pagination } from '@/components/view-controls';
-import { Plus, Search, Trash2, Eye, Edit, Calendar, Clock, MapPin, Download } from 'lucide-react';
+import { Plus, Search, Trash2, Eye, Edit, Calendar, Clock, MapPin, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function BookingsPage() {
@@ -72,6 +72,24 @@ export default function BookingsPage() {
     }
   };
 
+  const [syncingAll, setSyncingAll] = useState(false);
+  const handleSyncAll = async () => {
+    if (!confirm('Sinkronkan semua pemesanan ke Google Calendar?')) return;
+    setSyncingAll(true);
+    try {
+      const res = await api.post('/google-calendar/sync-all');
+      const d = res.data;
+      toast.success(`Selesai: ${d.synced} baru, ${d.updated} diperbarui, ${d.errors} gagal`, { duration: 5000 });
+      fetchBookings();
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Gagal';
+      if (msg.includes('belum terhubung')) toast.error('Hubungkan Google Calendar di Pengaturan');
+      else toast.error(msg);
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -93,7 +111,10 @@ export default function BookingsPage() {
         </form>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-1" /> Export XLSX
+            <Download className="h-4 w-4 mr-1" /> Export
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSyncAll} disabled={syncingAll} className="text-blue-600 border-blue-300 hover:bg-blue-50">
+            <RefreshCw className={`h-4 w-4 mr-1 ${syncingAll ? 'animate-spin' : ''}`} /> {syncingAll ? 'Syncing...' : 'Sync Semua'}
           </Button>
           <ViewToggle view={view} onViewChange={setView} />
           <Button onClick={() => router.push('/bookings/create')} className="bg-purple-600 hover:bg-purple-700">

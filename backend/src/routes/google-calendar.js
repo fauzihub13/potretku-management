@@ -215,4 +215,73 @@ router.delete('/sync/:bookingId', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.post('/sync-all', auth, async (req, res) => {
+  try {
+    const oauth2Client = await getAuthenticatedClient(req.userId);
+    if (!oauth2Client) return res.status(400).json({ error: 'Google Calendar belum terhubung' });
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const settings = await prisma.setting.findUnique({ where: { userId: req.userId } });
+    let calendarId = settings.googleCalendarId;
+
+    if (!calendarId) {
+      const cal = await calendar.calendars.insert({
+        requestBody: { summary: 'VendorDesk Bookings', description: 'Pemesanan dari VendorDesk' }
+      });
+      calendarId = cal.data.id;
+      await prisma.setting.update({ where: { userId: req.userId }, data: { googleCalendarId: calendarId } });
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: { userId: req.userId, status: { not: 'cancelled' } },
+      include: { freelancer: true }
+    });
+
+    const services = await prisma.service.findMany({ where: { userId: req.userId } });
+
+    let synced = 0, updated = 0, skipped = 0, errors = 0;
+
+    for (const booking of bookings) {
+      try {
+        const service = services.find(s => s.name === booking.packageName);
+        const durationHours = service ? (service.durationHours || 1) : 1;
+        const durationMinutes = service ? (service.durationMinutes || 0) : 0;
+        const totalMinutes = durationHours * 60 + durationMinutes;
+
+        let startTime = new Date(booking.sessionDate);
+        if (booking.sessionTime) {
+          const [h, m] = booking.sessionTime.split(':').map(Number);
+          startTime.setHours(h, m, 0, 0);
+        } else {
+          startTime.setHours(9, 0, 0, 0);
+        }
+        const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
+
+        const eventData = {
+          summary: booking.bookingCode + ' - ' + booking.clientName + ' (' + booking.eventType + ')',
+          description: 'Paket: ' + booking.packageName + '\nTotal: Rp' + booking.totalAmount.toLocaleString('id-ID') + '\nStatus: ' + booking.status + (booking.freelancer ? '\nFreelancer: ' + booking.freelancer.name : ''),
+          start: { dateTime: startTime.toISOString(), timeZone: 'Asia/Jakarta' },
+          end: { dateTime: endTime.toISOString(), timeZone: 'Asia/Jakarta' },
+          location: booking.location || undefined,
+          reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 60 }] }
+        };
+
+        if (booking.googleEventId) {
+          await calendar.events.update({ calendarId, eventId: booking.googleEventId, requestBody: eventData });
+          updated++;
+        } else {
+          const event = await calendar.events.insert({ calendarId, requestBody: eventData });
+          await prisma.booking.update({ where: { id: booking.id }, data: { googleEventId: event.data.id, calendarSynced: true } });
+          synced++;
+        }
+      } catch (err) {
+        console.error('[GC] Sync error for', booking.bookingCode, err.message);
+        errors++;
+      }
+    }
+
+    res.json({ message: 'Sinkronisasi selesai', synced, updated, skipped, errors, total: bookings.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
