@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ViewToggle, Pagination } from '@/components/view-controls';
-import { Plus, Trash2, Edit, FileText, Copy } from 'lucide-react';
+import { Plus, Trash2, Edit, FileText, Copy, Download, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PAGE_SIZE = 10;
@@ -55,6 +55,37 @@ export default function InvoicesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Hapus templat ini?')) return;
     try { await api.delete(`/templates/${id}`); toast.success('Berhasil dihapus'); setTemplates(t => t.filter(x => x.id !== id)); } catch { toast.error('Gagal'); }
+  };
+
+  const handleDownloadInvoice = async (bookingId: string, bookingCode: string) => {
+    try {
+      const res = await api.get(`/bookings/${bookingId}/invoice`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `faktur-${bookingCode}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Faktur berhasil diunduh');
+    } catch { toast.error('Gagal mengunduh faktur'); }
+  };
+
+  const handleSendWhatsApp = (b: any) => {
+    const phone = b.clientPhone?.replace(/[^0-9]/g, '');
+    if (!phone) return toast.error('Nomor telepon klien tidak tersedia');
+    const remaining = b.totalAmount - (b.dpPaid ? b.dpAmount : 0);
+    const msg = `Halo ${b.clientName}! 👋\n\n` +
+      `Berikut informasi pemesanan Anda:\n` +
+      `📋 Kode: *${b.bookingCode}*\n` +
+      `📸 Acara: ${b.eventType}\n` +
+      `📦 Paket: ${b.packageName}\n` +
+      `💰 Total: *Rp${b.totalAmount.toLocaleString('id-ID')}*\n` +
+      `💵 DP: Rp${b.dpAmount.toLocaleString('id-ID')} (${b.dpPaid ? 'Lunas ✅' : 'Belum'})\n` +
+      `📊 Sisa: *Rp${remaining.toLocaleString('id-ID')}*\n` +
+      (b.finalPaid ? `\n✅ Pembayaran sudah lunas. Terima kasih!` : `\nSilakan lakukan pelunasan sebelum hari H. Terima kasih!`);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   return (
@@ -105,19 +136,35 @@ export default function InvoicesPage() {
                     <th className="text-left p-3 font-medium text-zinc-500">Total</th>
                     <th className="text-left p-3 font-medium text-zinc-500">DP</th>
                     <th className="text-left p-3 font-medium text-zinc-500">Pelunasan</th>
+                    <th className="text-left p-3 font-medium text-zinc-500">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paged.length === 0 ? (
-                    <tr><td colSpan={6} className="p-8 text-center text-zinc-500">Belum ada data</td></tr>
+                    <tr><td colSpan={7} className="p-8 text-center text-zinc-500">Belum ada data</td></tr>
                   ) : paged.map(b => (
                     <tr key={b.id} className="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                       <td className="p-3 font-mono text-xs">{b.bookingCode}</td>
-                      <td className="p-3 font-medium">{b.clientName}</td>
+                      <td className="p-3">
+                        <div>
+                          <p className="font-medium">{b.clientName}</p>
+                          <p className="text-xs text-zinc-500">{b.clientPhone}</p>
+                        </div>
+                      </td>
                       <td className="p-3">{b.packageName}</td>
                       <td className="p-3 font-medium">Rp{b.totalAmount.toLocaleString()}</td>
                       <td className="p-3"><Badge variant={b.dpPaid ? 'default' : 'secondary'}>{b.dpPaid ? 'Lunas' : 'Belum'}</Badge></td>
                       <td className="p-3"><Badge variant={b.finalPaid ? 'default' : 'secondary'}>{b.finalPaid ? 'Lunas' : 'Belum'}</Badge></td>
+                      <td className="p-3">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(b.id, b.bookingCode)} title="Unduh Faktur PDF">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleSendWhatsApp(b)} className="text-green-600" title="Kirim WhatsApp">
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -144,6 +191,14 @@ export default function InvoicesPage() {
                   <div className="flex gap-2 mt-3 pt-3 border-t">
                     <Badge variant={b.dpPaid ? 'default' : 'secondary'}>DP: {b.dpPaid ? 'Lunas' : 'Belum'}</Badge>
                     <Badge variant={b.finalPaid ? 'default' : 'secondary'}>Pelunasan: {b.finalPaid ? 'Lunas' : 'Belum'}</Badge>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDownloadInvoice(b.id, b.bookingCode)}>
+                      <Download className="h-3.5 w-3.5 mr-1" /> Faktur
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1 text-green-600 border-green-300 hover:bg-green-50" onClick={() => handleSendWhatsApp(b)}>
+                      <MessageCircle className="h-3.5 w-3.5 mr-1" /> WhatsApp
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

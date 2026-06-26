@@ -156,6 +156,142 @@ router.get('/export', auth, async (req, res) => {
   }
 });
 
+router.get('/:id/invoice', auth, async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const booking = await prisma.booking.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+      include: { freelancer: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Pemesanan tidak ditemukan' });
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+
+    const statusMap = {
+      pending: 'Menunggu', confirmed: 'Dikonfirmasi', scheduled: 'Terjadwal',
+      in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan'
+    };
+
+    const formatRp = (n) => 'Rp' + Number(n).toLocaleString('id-ID');
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=faktur-${booking.bookingCode}.pdf`);
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('FAKTUR', { align: 'right' });
+    doc.fontSize(10).font('Helvetica').fillColor('#666666');
+    doc.text(`Kode: ${booking.bookingCode}`, { align: 'right' });
+    doc.text(`Tanggal: ${new Date(booking.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, { align: 'right' });
+    doc.text(`Status: ${statusMap[booking.status] || booking.status}`, { align: 'right' });
+    doc.fillColor('#000000');
+    doc.moveDown(2);
+
+    // Studio Info
+    doc.fontSize(14).font('Helvetica-Bold').text(user.studioName || 'Studio');
+    doc.fontSize(9).font('Helvetica').fillColor('#666666');
+    if (user.studioAddress) doc.text(user.studioAddress);
+    if (user.studioPhone) doc.text(user.studioPhone);
+    doc.text(user.email);
+    doc.fillColor('#000000');
+    doc.moveDown(1);
+
+    // Divider
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
+    doc.moveDown(1);
+
+    // Client Info
+    doc.fontSize(10).font('Helvetica-Bold').text('Klien');
+    doc.font('Helvetica').text(booking.clientName);
+    if (booking.clientEmail) doc.text(booking.clientEmail);
+    if (booking.clientPhone) doc.text(booking.clientPhone);
+    doc.moveDown(1);
+
+    // Session Info
+    doc.font('Helvetica-Bold').text('Detail Sesi');
+    doc.font('Helvetica');
+    doc.text(`Acara: ${booking.eventType}`);
+    doc.text(`Tanggal: ${new Date(booking.sessionDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`);
+    if (booking.sessionTime) doc.text(`Jam: ${booking.sessionTime} WIB`);
+    if (booking.location) doc.text(`Lokasi: ${booking.location}`);
+    doc.moveDown(1);
+
+    // Divider
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
+    doc.moveDown(1);
+
+    // Items
+    doc.font('Helvetica-Bold').text('Rincian Biaya');
+    doc.moveDown(0.5);
+
+    // Table header
+    const tableTop = doc.y;
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#666666');
+    doc.text('Deskripsi', 50, tableTop, { width: 300 });
+    doc.text('Jumlah', 400, tableTop, { width: 145, align: 'right' });
+    doc.fillColor('#000000');
+
+    doc.moveTo(50, tableTop + 15).lineTo(545, tableTop + 15).stroke('#e5e7eb');
+    doc.moveDown(1);
+
+    // Package row
+    doc.fontSize(10).font('Helvetica');
+    doc.text(booking.packageName, 50, doc.y, { width: 300 });
+    doc.text(formatRp(booking.totalAmount), 400, doc.y - 15, { width: 145, align: 'right' });
+
+    // Additional costs
+    const additionalCosts = JSON.parse(booking.addons || '[]');
+    additionalCosts.forEach((addon: any) => {
+      doc.text(addon.name || 'Tambahan', 50, doc.y + 5, { width: 300 });
+      doc.text(formatRp(addon.price || 0), 400, doc.y - 15, { width: 145, align: 'right' });
+    });
+
+    doc.moveDown(1);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
+    doc.moveDown(0.5);
+
+    // Total
+    doc.fontSize(11).font('Helvetica-Bold');
+    doc.text('Total', 50, doc.y, { width: 300 });
+    doc.text(formatRp(booking.totalAmount), 400, doc.y - 15, { width: 145, align: 'right' });
+
+    doc.moveDown(1);
+
+    // DP
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`DP: ${formatRp(booking.dpAmount)}`, 50, doc.y, { width: 300 });
+    doc.text(booking.dpPaid ? 'Lunas' : 'Belum', 400, doc.y - 15, { width: 145, align: 'right' });
+
+    doc.moveDown(0.5);
+
+    // Remaining
+    const remaining = booking.totalAmount - (booking.dpPaid ? booking.dpAmount : 0);
+    doc.text('Sisa Pembayaran', 50, doc.y, { width: 300 });
+    doc.text(formatRp(remaining), 400, doc.y - 15, { width: 145, align: 'right' });
+
+    doc.moveDown(2);
+
+    // Payment Status
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#666666').text('Status Pembayaran');
+    doc.font('Helvetica');
+    doc.text(`DP: ${booking.dpPaid ? 'Lunas' : 'Belum Dibayar'}`);
+    doc.text(`Pelunasan: ${booking.finalPaid ? 'Lunas' : 'Belum Dibayar'}`);
+    doc.fillColor('#000000');
+    doc.moveDown(2);
+
+    // Footer
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
+    doc.moveDown(1);
+    doc.fontSize(8).font('Helvetica').fillColor('#999999').text('Terima kasih atas kepercayaan Anda.', { align: 'center' });
+    doc.text(`${user.studioName || 'Studio'} - ${user.email}`, { align: 'center' });
+
+    doc.end();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/calendar', auth, async (req, res) => {
   try {
     const { month, year } = req.query;

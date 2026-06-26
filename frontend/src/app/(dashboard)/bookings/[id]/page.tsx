@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate, statusColors, statusLabels } from '@/lib/utils-helpers';
-import { ArrowLeft, Edit, CheckCircle, Clock, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Edit, CheckCircle, Clock, ArrowRight, FileText, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 function addMinutes(time: string, hours: number, minutes: number): string {
@@ -85,6 +85,38 @@ export default function BookingDetailPage() {
     } catch { toast.error('Gagal menyimpan'); }
   };
 
+  const handleDownloadInvoice = async () => {
+    try {
+      const res = await api.get(`/bookings/${params.id}/invoice`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `faktur-${booking.bookingCode}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Faktur berhasil diunduh');
+    } catch { toast.error('Gagal mengunduh faktur'); }
+  };
+
+  const handleSendWhatsApp = () => {
+    const phone = booking.clientPhone?.replace(/[^0-9]/g, '');
+    if (!phone) return toast.error('Nomor telepon klien tidak tersedia');
+    const remaining = booking.totalAmount - (booking.dpPaid ? booking.dpAmount : 0);
+    const msg = `Halo ${booking.clientName}! 👋\n\n` +
+      `Berikut informasi pemesanan Anda:\n` +
+      `📋 Kode: *${booking.bookingCode}*\n` +
+      `📸 Acara: ${booking.eventType}\n` +
+      `📅 Tanggal: ${new Date(booking.sessionDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}\n` +
+      `📦 Paket: ${booking.packageName}\n` +
+      `💰 Total: *Rp${booking.totalAmount.toLocaleString('id-ID')}*\n` +
+      `💵 DP: Rp${booking.dpAmount.toLocaleString('id-ID')} (${booking.dpPaid ? 'Lunas ✅' : 'Belum'})\n` +
+      `📊 Sisa: *Rp${remaining.toLocaleString('id-ID')}*\n` +
+      (booking.finalPaid ? `\n✅ Pembayaran sudah lunas. Terima kasih!` : `\nSilakan lakukan pelunasan sebelum hari H. Terima kasih!`);
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" /></div>;
   if (!booking) return <div className="text-center py-10">Pemesanan tidak ditemukan</div>;
 
@@ -94,9 +126,17 @@ export default function BookingDetailPage() {
         <Button variant="ghost" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Kembali
         </Button>
-        <Button variant="outline" onClick={() => router.push(`/bookings/${booking.id}/edit`)}>
-          <Edit className="h-4 w-4 mr-2" /> Edit
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleDownloadInvoice}>
+            <FileText className="h-4 w-4 mr-1" /> Faktur PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSendWhatsApp} className="text-green-600 border-green-300 hover:bg-green-50">
+            <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
+          </Button>
+          <Button variant="outline" onClick={() => router.push(`/bookings/${booking.id}/edit`)}>
+            <Edit className="h-4 w-4 mr-1" /> Edit
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
