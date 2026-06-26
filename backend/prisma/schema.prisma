@@ -166,8 +166,8 @@ model Setting {
   customStatuses     String? @default("[]")
   eventTypes         String? @default("[\"Wedding\",\"Pre-wedding\",\"Portrait\",\"Event\",\"Commercial\"]")
   googleCalendarId   String?
-  googleAccessToken  String?
-  googleRefreshToken String?
+  googleAccessToken  String?   @db.Text
+  googleRefreshToken String?   @db.Text
   googleTokenExpiry  DateTime?
   googleDriveFolderId String?
   telegramChatId     String?
