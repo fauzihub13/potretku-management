@@ -12,6 +12,8 @@ import { formatCurrency, statusColors, statusLabels } from '@/lib/utils-helpers'
 import { ViewToggle, Pagination } from '@/components/view-controls';
 import { Plus, Search, Trash2, Eye, Edit, Calendar, Clock, MapPin, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog, ConfirmActionDialog } from '@/components/confirm-dialog';
+import { SortableTh, useSortableData } from '@/components/sortable-table';
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -43,14 +45,19 @@ export default function BookingsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus pemesanan ini?')) return;
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
     try {
-      await api.delete(`/bookings/${id}`);
+      await api.delete(`/bookings/${deleteId}`);
       toast.success('Pemesanan dihapus');
       fetchBookings();
     } catch {
       toast.error('Gagal menghapus');
     }
+    setDeleteId(null);
   };
 
   const handleExport = async () => {
@@ -72,9 +79,15 @@ export default function BookingsPage() {
     }
   };
 
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [confirmSyncAll, setConfirmSyncAll] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const handleSyncAll = async () => {
-    if (!confirm('Sinkronkan semua pemesanan ke Google Calendar?')) return;
+    setConfirmSyncAll(true);
+  };
+
+  const confirmSyncAllAction = async () => {
+    setConfirmSyncAll(false);
     setSyncingAll(true);
     try {
       const res = await api.post('/google-calendar/sync-all');
@@ -89,6 +102,8 @@ export default function BookingsPage() {
       setSyncingAll(false);
     }
   };
+
+  const { sorted, sortField, sortDir, requestSort } = useSortableData(bookings, 'createdAt', 'desc');
 
   return (
     <div className="space-y-4">
@@ -131,23 +146,23 @@ export default function BookingsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                    <th className="text-left p-3 font-medium text-zinc-500">Kode</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Klien</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Acara</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Tanggal Sesi</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Dibuat</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Paket</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Total</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Status</th>
+                    <SortableTh label="Kode" field="bookingCode" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Klien" field="clientName" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Acara" field="eventType" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Tanggal Sesi" field="sessionDate" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Dibuat" field="createdAt" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Paket" field="packageName" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Total" field="totalAmount" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Status" field="status" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
                     <th className="text-left p-3 font-medium text-zinc-500">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Memuat data...</td></tr>
-                  ) : bookings.length === 0 ? (
+                  ) : sorted.length === 0 ? (
                     <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Belum ada pemesanan</td></tr>
-                  ) : bookings.map((b) => (
+                  ) : sorted.map((b) => (
                     <tr key={b.id} className="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                       <td className="p-3 font-mono text-xs">{b.bookingCode}</td>
                       <td className="p-3">
@@ -227,6 +242,26 @@ export default function BookingsPage() {
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Hapus pemesanan ini?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        onConfirm={confirmDelete}
+      />
+
+      <ConfirmActionDialog
+        open={confirmSyncAll}
+        onOpenChange={setConfirmSyncAll}
+        title="Sinkronkan semua pemesanan ke Google Calendar?"
+        description="Semua pemesanan akan disinkronkan ke Google Calendar."
+        confirmLabel="Sinkronkan"
+        cancelLabel="Batal"
+        onConfirm={confirmSyncAllAction}
+      />
     </div>
   );
 }

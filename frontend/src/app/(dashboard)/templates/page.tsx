@@ -8,11 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', type: 'whatsapp', content: '', variables: '' });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/templates').then(res => setTemplates(res.data)).finally(() => setLoading(false));
@@ -30,8 +32,13 @@ export default function TemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus?')) return;
-    try { await api.delete(`/templates/${id}`); toast.success('Berhasil dihapus'); setTemplates(t => t.filter(x => x.id !== id)); } catch { toast.error('Gagal'); }
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try { await api.delete(`/templates/${deleteId}`); toast.success('Berhasil dihapus'); setTemplates(t => t.filter(x => x.id !== deleteId)); } catch { toast.error('Gagal'); }
+    setDeleteId(null);
   };
 
   return (
@@ -70,6 +77,16 @@ export default function TemplatesPage() {
           </Card>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Hapus?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ViewToggle, Pagination } from '@/components/view-controls';
 import { Plus, Trash2, Edit, FileText, Copy, Download, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { SortableTh, useSortableData } from '@/components/sortable-table';
 
 const PAGE_SIZE = 10;
 
@@ -26,6 +28,7 @@ export default function InvoicesPage() {
   const [view, setView] = useState<'table' | 'card'>('card');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([api.get('/templates?type=whatsapp'), api.get('/bookings?limit=50')]).then(([t, b]) => {
@@ -35,8 +38,9 @@ export default function InvoicesPage() {
   }, []);
 
   const filteredBookings = bookings.filter(b => !search || b.clientName.toLowerCase().includes(search.toLowerCase()) || b.bookingCode.toLowerCase().includes(search.toLowerCase()));
-  const totalPages = Math.ceil(filteredBookings.length / PAGE_SIZE);
-  const paged = filteredBookings.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { sorted: sortedBookings, sortField, sortDir, requestSort } = useSortableData(filteredBookings, 'createdAt', 'desc');
+  const totalPages = Math.ceil(sortedBookings.length / PAGE_SIZE);
+  const paged = sortedBookings.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const openCreate = () => { setForm({ name: '', type: 'whatsapp', content: '', variables: '' }); setEditId(null); setDialog(true); };
   const openEdit = (t: any) => { setForm({ name: t.name, type: t.type, content: t.content, variables: t.variables || '' }); setEditId(t.id); setDialog(true); };
@@ -53,8 +57,13 @@ export default function InvoicesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus templat ini?')) return;
-    try { await api.delete(`/templates/${id}`); toast.success('Berhasil dihapus'); setTemplates(t => t.filter(x => x.id !== id)); } catch { toast.error('Gagal'); }
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try { await api.delete(`/templates/${deleteId}`); toast.success('Berhasil dihapus'); setTemplates(t => t.filter(x => x.id !== deleteId)); } catch { toast.error('Gagal'); }
+    setDeleteId(null);
   };
 
   const handleDownloadInvoice = async (bookingId: string, bookingCode: string) => {
@@ -130,12 +139,12 @@ export default function InvoicesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                    <th className="text-left p-3 font-medium text-zinc-500">Kode</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Klien</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Paket</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Total</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">DP</th>
-                    <th className="text-left p-3 font-medium text-zinc-500">Pelunasan</th>
+                    <SortableTh label="Kode" field="bookingCode" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Klien" field="clientName" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Paket" field="packageName" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Total" field="totalAmount" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="DP" field="dpPaid" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                    <SortableTh label="Pelunasan" field="finalPaid" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
                     <th className="text-left p-3 font-medium text-zinc-500">Aksi</th>
                   </tr>
                 </thead>
@@ -223,6 +232,16 @@ export default function InvoicesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Hapus templat ini?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

@@ -15,6 +15,9 @@ import { formatCurrency } from '@/lib/utils-helpers';
 import { ViewToggle, Pagination } from '@/components/view-controls';
 import { Plus, Trash2, Edit, Package, Clock, Image, MapPin, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { validateName, validateNumber } from '@/lib/validations';
+import { SortableTh, useSortableData } from '@/components/sortable-table';
 
 interface AdditionalCost { type: string; amount: number; description: string; }
 interface ServiceForm {
@@ -43,6 +46,8 @@ export default function ServicesPage() {
   const [page, setPage] = useState(1);
   const [filterCategory, setFilterCategory] = useState('all');
   const [search, setSearch] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const fetchServices = () => {
     setLoading(true);
@@ -55,10 +60,11 @@ export default function ServicesPage() {
     if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { sorted, sortField, sortDir, requestSort } = useSortableData(filtered, 'sortOrder', 'asc');
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openCreate = () => { setForm(emptyForm); setEditId(null); setDialog(true); };
+  const openCreate = () => { setForm(emptyForm); setEditId(null); setFormErrors({}); setDialog(true); };
   const openEdit = (s: any) => {
     setForm({
       name: s.name, description: s.description || '', price: s.price,
@@ -67,11 +73,18 @@ export default function ServicesPage() {
       category: s.category, eventTypes: JSON.parse(s.eventTypes || '[]'),
       city: s.city || '', additionalCosts: JSON.parse(s.additionalCosts || '[]'), isActive: s.isActive
     });
-    setEditId(s.id); setDialog(true);
+    setEditId(s.id); setFormErrors({}); setDialog(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    const nameErr = validateName(form.name, 'Nama layanan');
+    if (nameErr) newErrors.name = nameErr;
+    const priceErr = validateNumber(form.price, 'Harga', 0);
+    if (priceErr) newErrors.price = priceErr;
+    setFormErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
     const payload = { ...form, eventTypes: JSON.stringify(form.eventTypes), additionalCosts: JSON.stringify(form.additionalCosts), discountPrice: form.discountPrice || null };
     try {
       if (editId) { await api.put(`/services/${editId}`, payload); toast.success('Layanan diperbarui'); }
@@ -81,8 +94,13 @@ export default function ServicesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus layanan ini?')) return;
-    try { await api.delete(`/services/${id}`); toast.success('Berhasil dihapus'); fetchServices(); } catch { toast.error('Gagal'); }
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try { await api.delete(`/services/${deleteId}`); toast.success('Berhasil dihapus'); fetchServices(); } catch { toast.error('Gagal'); }
+    setDeleteId(null);
   };
 
   const toggleEventType = (type: string) => {
@@ -129,13 +147,13 @@ export default function ServicesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="text-left p-3 font-medium text-zinc-500">Nama</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Tipe</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Harga</th>
+                  <SortableTh label="Nama" field="name" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Tipe" field="category" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Harga" field="price" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
                   <th className="text-left p-3 font-medium text-zinc-500">Durasi</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Foto</th>
+                  <SortableTh label="Foto" field="photoEditCount" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
                   <th className="text-left p-3 font-medium text-zinc-500">Acara</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Status</th>
+                  <SortableTh label="Status" field="isActive" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
                   <th className="text-left p-3 font-medium text-zinc-500">Aksi</th>
                 </tr>
               </thead>
@@ -256,12 +274,12 @@ export default function ServicesPage() {
           <DialogHeader><DialogTitle>{editId ? 'Edit Layanan' : 'Tambah Layanan'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Nama Layanan *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Wedding Full Day" required /></div>
+              <div className="space-y-2"><Label>Nama Layanan *</Label><Input value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); if (formErrors.name) setFormErrors(prev => { const { name: _, ...rest } = prev; return rest; }); }} placeholder="Wedding Full Day" required />{formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}</div>
               <div className="space-y-2"><Label>Tipe Paket *</Label><Select value={form.category} onValueChange={(v) => setForm(f => ({ ...f, category: v || 'main' }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="main">Paket Utama</SelectItem><SelectItem value="addon">Tambahan</SelectItem></SelectContent></Select></div>
             </div>
             <div className="space-y-2"><Label>Deskripsi</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} placeholder="Deskripsi lengkap layanan ini..." /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Harga (Rp) *</Label><Input type="number" value={form.price || ''} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} placeholder="15000000" required /></div>
+              <div className="space-y-2"><Label>Harga (Rp) *</Label><Input type="number" value={form.price || ''} onChange={e => { setForm(f => ({ ...f, price: Number(e.target.value) })); if (formErrors.price) setFormErrors(prev => { const { price: _, ...rest } = prev; return rest; }); }} placeholder="15000000" required />{formErrors.price && <p className="text-xs text-red-500 mt-1">{formErrors.price}</p>}</div>
               <div className="space-y-2"><Label>Harga Coret (Rp) <span className="text-zinc-400 text-xs">(opsional)</span></Label><Input type="number" value={form.discountPrice || ''} onChange={e => setForm(f => ({ ...f, discountPrice: e.target.value ? Number(e.target.value) : null }))} placeholder="18000000" /></div>
             </div>
             <div className="space-y-2"><Label>Durasi</Label><div className="flex items-center gap-2"><div className="flex-1"><Input type="number" min={0} value={form.durationHours} onChange={e => setForm(f => ({ ...f, durationHours: Number(e.target.value) }))} placeholder="0" /><p className="text-xs text-zinc-400 mt-1">Jam</p></div><span className="text-zinc-400 font-bold">:</span><div className="flex-1"><Input type="number" min={0} max={59} value={form.durationMinutes} onChange={e => setForm(f => ({ ...f, durationMinutes: Number(e.target.value) }))} placeholder="0" /><p className="text-xs text-zinc-400 mt-1">Menit</p></div></div></div>
@@ -290,6 +308,16 @@ export default function ServicesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Hapus layanan ini?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

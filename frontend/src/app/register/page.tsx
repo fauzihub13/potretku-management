@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { validateEmail, validatePassword, validateName } from '@/lib/validations';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -16,13 +17,22 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { register } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) return toast.error('Kata sandi tidak cocok');
-    if (password.length < 6) return toast.error('Kata sandi minimal 6 karakter');
+    const newErrors: Record<string, string> = {};
+    const nameErr = validateName(name, 'Nama');
+    if (nameErr) newErrors.name = nameErr;
+    const emailErr = validateEmail(email);
+    if (emailErr) newErrors.email = emailErr;
+    const pwErr = validatePassword(password);
+    if (pwErr) newErrors.password = pwErr;
+    if (password !== confirmPassword) newErrors.confirmPassword = 'Kata sandi tidak cocok';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
     setLoading(true);
     try {
       await register(name, email, password);
@@ -46,19 +56,23 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nama Lengkap</Label>
-              <Input id="name" placeholder="Nama Studio / Nama Anda" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input id="name" placeholder="Nama Studio / Nama Anda" value={name} onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => { const { name: _, ...rest } = prev; return rest; }); }} required />
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="admin@contoh.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input id="email" type="email" placeholder="admin@contoh.com" value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => { const { email: _, ...rest } = prev; return rest; }); }} required />
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Kata Sandi</Label>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(prev => { const { password: _, ...rest } = prev; return rest; }); }} required />
+              {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Konfirmasi Kata Sandi</Label>
-              <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+              <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); if (errors.confirmPassword) setErrors(prev => { const { confirmPassword: _, ...rest } = prev; return rest; }); }} required />
+              {errors.confirmPassword && <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>}
             </div>
             <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
               {loading ? 'Membuat akun...' : 'Daftar'}

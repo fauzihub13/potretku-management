@@ -14,6 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, formatDate, statusColors, statusLabels } from '@/lib/utils-helpers';
 import { Plus, CheckCircle, Clock, Trash2, CreditCard, Users, ChevronDown, ChevronRight, Calendar, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { validateNumber } from '@/lib/validations';
+import { SortableTh, useSortableData } from '@/components/sortable-table';
 
 export default function TeamPaymentsPage() {
   const router = useRouter();
@@ -27,6 +30,10 @@ export default function TeamPaymentsPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [form, setForm] = useState({ teamMemberId: '', bookingId: '', amount: 0, description: '' });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const { sorted: sortedPayments, sortField, sortDir, requestSort } = useSortableData(payments, 'createdAt', 'desc');
 
   const fetchData = () => {
     setLoading(true);
@@ -50,6 +57,12 @@ export default function TeamPaymentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    if (!form.teamMemberId) newErrors.teamMemberId = 'Pilih anggota tim';
+    const amountErr = validateNumber(form.amount, 'Jumlah', 1);
+    if (amountErr) newErrors.amount = amountErr;
+    setFormErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
     try {
       await api.post('/team-payments', { ...form, bookingId: form.bookingId || undefined });
       toast.success('Pembayaran ditambahkan');
@@ -68,8 +81,13 @@ export default function TeamPaymentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus?')) return;
-    try { await api.delete(`/team-payments/${id}`); toast.success('Dihapus'); fetchData(); } catch { toast.error('Gagal'); }
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try { await api.delete(`/team-payments/${deleteId}`); toast.success('Dihapus'); fetchData(); } catch { toast.error('Gagal'); }
+    setDeleteId(null);
   };
 
   const totalPaid = summary.reduce((s, m) => s + m.totalPaid, 0);
@@ -226,19 +244,19 @@ export default function TeamPaymentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="text-left p-3 font-medium text-zinc-500">Tanggal</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Anggota</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Booking</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Keterangan</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Jumlah</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Status</th>
+                  <SortableTh label="Tanggal" field="createdAt" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Anggota" field="teamMember.name" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Booking" field="booking.bookingCode" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Keterangan" field="description" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Jumlah" field="amount" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Status" field="status" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
                   <th className="text-left p-3 font-medium text-zinc-500">Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {payments.length === 0 ? (
+                {sortedPayments.length === 0 ? (
                   <tr><td colSpan={7} className="p-8 text-center text-zinc-500">Belum ada data pembayaran</td></tr>
-                ) : payments.map(p => (
+                ) : sortedPayments.map(p => (
                   <tr key={p.id} className="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                     <td className="p-3 text-xs text-zinc-500">{formatDate(p.createdAt)}</td>
                     <td className="p-3">
@@ -289,12 +307,13 @@ export default function TeamPaymentsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Anggota *</Label>
-              <Select value={form.teamMemberId} onValueChange={(v) => setForm(f => ({ ...f, teamMemberId: v || '' }))}>
+              <Select value={form.teamMemberId} onValueChange={(v) => { setForm(f => ({ ...f, teamMemberId: v || '' })); if (formErrors.teamMemberId) setFormErrors(prev => { const { teamMemberId: _, ...rest } = prev; return rest; }); }}>
                 <SelectTrigger><SelectValue placeholder="Pilih anggota" /></SelectTrigger>
                 <SelectContent>
                   {team.filter(t => t.isActive).map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.role})</SelectItem>)}
                 </SelectContent>
               </Select>
+              {formErrors.teamMemberId && <p className="text-xs text-red-500 mt-1">{formErrors.teamMemberId}</p>}
             </div>
             <div className="space-y-2">
               <Label>Booking (opsional)</Label>
@@ -307,7 +326,8 @@ export default function TeamPaymentsPage() {
             </div>
             <div className="space-y-2">
               <Label>Jumlah (Rp) *</Label>
-              <Input type="number" value={form.amount || ''} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))} required />
+              <Input type="number" value={form.amount || ''} onChange={e => { setForm(f => ({ ...f, amount: Number(e.target.value) })); if (formErrors.amount) setFormErrors(prev => { const { amount: _, ...rest } = prev; return rest; }); }} required />
+              {formErrors.amount && <p className="text-xs text-red-500 mt-1">{formErrors.amount}</p>}
             </div>
             <div className="space-y-2">
               <Label>Keterangan</Label>
@@ -320,6 +340,16 @@ export default function TeamPaymentsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Hapus?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

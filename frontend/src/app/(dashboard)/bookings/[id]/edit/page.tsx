@@ -17,6 +17,7 @@ import { ArrowLeft } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { validateName, validatePhone, validateEmail, validateDate, validateTime, validateNumber } from "@/lib/validations";
 
 const timeSlots = Array.from({ length: 48 }, (_, i) => {
   const h = Math.floor(i / 2);
@@ -40,6 +41,7 @@ export default function EditBookingPage() {
   const [services, setServices] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     clientName: "",
     clientEmail: "",
@@ -130,6 +132,27 @@ export default function EditBookingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    const nameErr = validateName(form.clientName, 'Nama klien');
+    if (nameErr) newErrors.clientName = nameErr;
+    if (form.clientPhone) {
+      const phoneErr = validatePhone(form.clientPhone);
+      if (phoneErr) newErrors.clientPhone = phoneErr;
+    }
+    if (form.clientEmail) {
+      const emailErr = validateEmail(form.clientEmail);
+      if (emailErr) newErrors.clientEmail = emailErr;
+    }
+    const dateErr = validateDate(form.sessionDate, 'Tanggal sesi');
+    if (dateErr) newErrors.sessionDate = dateErr;
+    if (form.sessionTime) {
+      const timeErr = validateTime(form.sessionTime);
+      if (timeErr) newErrors.sessionTime = timeErr;
+    }
+    const amountErr = validateNumber(form.totalAmount, 'Total', 0);
+    if (amountErr) newErrors.totalAmount = amountErr;
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
     setLoading(true);
     try {
       await api.put(`/bookings/${params.id}`, form);
@@ -168,24 +191,27 @@ export default function EditBookingPage() {
                 <Label>Nama Klien *</Label>
                 <Input
                   value={form.clientName}
-                  onChange={(e) => update("clientName", e.target.value)}
+                  onChange={(e) => { update("clientName", e.target.value); if (errors.clientName) setErrors(prev => { const { clientName: _, ...rest } = prev; return rest; }); }}
                   required
                 />
+                {errors.clientName && <p className="text-xs text-red-500 mt-1">{errors.clientName}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Telepon</Label>
                 <Input
                   value={form.clientPhone}
-                  onChange={(e) => update("clientPhone", e.target.value)}
+                  onChange={(e) => { update("clientPhone", e.target.value); if (errors.clientPhone) setErrors(prev => { const { clientPhone: _, ...rest } = prev; return rest; }); }}
                 />
+                {errors.clientPhone && <p className="text-xs text-red-500 mt-1">{errors.clientPhone}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
                   type="email"
                   value={form.clientEmail}
-                  onChange={(e) => update("clientEmail", e.target.value)}
+                  onChange={(e) => { update("clientEmail", e.target.value); if (errors.clientEmail) setErrors(prev => { const { clientEmail: _, ...rest } = prev; return rest; }); }}
                 />
+                {errors.clientEmail && <p className="text-xs text-red-500 mt-1">{errors.clientEmail}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Jenis Acara</Label>
@@ -261,15 +287,16 @@ export default function EditBookingPage() {
                 <Input
                   type="date"
                   value={form.sessionDate}
-                  onChange={(e) => update("sessionDate", e.target.value)}
+                  onChange={(e) => { update("sessionDate", e.target.value); if (errors.sessionDate) setErrors(prev => { const { sessionDate: _, ...rest } = prev; return rest; }); }}
                   required
                 />
+                {errors.sessionDate && <p className="text-xs text-red-500 mt-1">{errors.sessionDate}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Jam Mulai *</Label>
                 <Select
                   value={form.sessionTime}
-                  onValueChange={(v) => update("sessionTime", v || "")}
+                  onValueChange={(v) => { update("sessionTime", v || ""); if (errors.sessionTime) setErrors(prev => { const { sessionTime: _, ...rest } = prev; return rest; }); }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih jam mulai" />
@@ -282,6 +309,7 @@ export default function EditBookingPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.sessionTime && <p className="text-xs text-red-500 mt-1">{errors.sessionTime}</p>}
               </div>
 
               <div className="space-y-2">
@@ -296,10 +324,9 @@ export default function EditBookingPage() {
                 <Input
                   type="number"
                   value={form.totalAmount}
-                  onChange={(e) =>
-                    update("totalAmount", Number(e.target.value))
-                  }
+                  onChange={(e) => { update("totalAmount", Number(e.target.value)); if (errors.totalAmount) setErrors(prev => { const { totalAmount: _, ...rest } = prev; return rest; }); }}
                 />
+                {errors.totalAmount && <p className="text-xs text-red-500 mt-1">{errors.totalAmount}</p>}
               </div>
               <div className="space-y-2">
                 <Label>DP (Rp)</Label>

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { ConfirmActionDialog } from '@/components/confirm-dialog';
 import { Save, Link, Unlink, CheckCircle, ExternalLink } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
   const [googleConnected, setGoogleConnected] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   useEffect(() => {
     api.get('/settings').then(res => setSettings(res.data)).finally(() => setLoading(false));
@@ -114,12 +116,7 @@ export default function SettingsPage() {
                     <p className="font-medium text-sm">Tersambung</p>
                     <p className="text-xs text-zinc-500">Google Calendar sudah terhubung. Booking akan otomatis tersinkron.</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={async () => {
-                    if (!confirm('Putuskan sambungan Google Calendar?')) return;
-                    await api.post('/google-calendar/disconnect');
-                    setGoogleConnected(false);
-                    toast.success('Google Calendar diputuskan');
-                  }}>
+                  <Button variant="outline" size="sm" onClick={() => setConfirmDisconnect(true)}>
                     <Unlink className="h-4 w-4 mr-1" /> Putuskan
                   </Button>
                 </>
@@ -174,6 +171,21 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <ConfirmActionDialog
+        open={confirmDisconnect}
+        onOpenChange={setConfirmDisconnect}
+        title="Putuskan sambungan Google Calendar?"
+        description="Anda dapat menghubungkan kembali kapan saja."
+        confirmLabel="Putuskan"
+        cancelLabel="Batal"
+        onConfirm={async () => {
+          await api.post('/google-calendar/disconnect');
+          setGoogleConnected(false);
+          toast.success('Google Calendar diputuskan');
+          setConfirmDisconnect(false);
+        }}
+      />
     </div>
   );
 }

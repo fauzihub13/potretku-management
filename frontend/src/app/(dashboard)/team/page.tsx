@@ -12,6 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { ViewToggle, Pagination } from '@/components/view-controls';
 import { Users, Phone, Mail, Trash2, Edit, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { validateName, validatePhone, validateEmail } from '@/lib/validations';
+import { SortableTh, useSortableData } from '@/components/sortable-table';
 
 const PAGE_SIZE = 12;
 
@@ -24,6 +27,8 @@ export default function TeamPage() {
   const [view, setView] = useState<'table' | 'card'>('card');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const fetchMembers = () => {
     setLoading(true);
@@ -32,14 +37,30 @@ export default function TeamPage() {
   useEffect(() => { fetchMembers(); }, []);
 
   const filtered = members.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()) || m.role.toLowerCase().includes(search.toLowerCase()));
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const { sorted, sortField, sortDir, requestSort } = useSortableData(filtered, 'name', 'asc');
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openCreate = () => { setForm({ name: '', role: '', email: '', phone: '', tags: '[]', isActive: true }); setEditId(null); setDialog(true); };
-  const openEdit = (m: any) => { setForm({ name: m.name, role: m.role, email: m.email || '', phone: m.phone || '', tags: m.tags || '[]', isActive: m.isActive }); setEditId(m.id); setDialog(true); };
+  const openCreate = () => { setForm({ name: '', role: '', email: '', phone: '', tags: '[]', isActive: true }); setEditId(null); setFormErrors({}); setDialog(true); };
+  const openEdit = (m: any) => { setForm({ name: m.name, role: m.role, email: m.email || '', phone: m.phone || '', tags: m.tags || '[]', isActive: m.isActive }); setEditId(m.id); setFormErrors({}); setDialog(true); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    const nameErr = validateName(form.name);
+    if (nameErr) newErrors.name = nameErr;
+    const roleErr = validateName(form.role, 'Peran');
+    if (roleErr) newErrors.role = roleErr;
+    if (form.phone) {
+      const phoneErr = validatePhone(form.phone);
+      if (phoneErr) newErrors.phone = phoneErr;
+    }
+    if (form.email) {
+      const emailErr = validateEmail(form.email);
+      if (emailErr) newErrors.email = emailErr;
+    }
+    setFormErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
     try {
       if (editId) { await api.put(`/team/${editId}`, form); toast.success('Anggota diperbarui'); }
       else { await api.post('/team', form); toast.success('Anggota ditambahkan'); }
@@ -56,8 +77,13 @@ export default function TeamPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus anggota ini?')) return;
-    try { await api.delete(`/team/${id}`); toast.success('Berhasil dihapus'); fetchMembers(); } catch { toast.error('Gagal'); }
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try { await api.delete(`/team/${deleteId}`); toast.success('Berhasil dihapus'); fetchMembers(); } catch { toast.error('Gagal'); }
+    setDeleteId(null);
   };
 
   const roleColors: Record<string, string> = {
@@ -81,11 +107,11 @@ export default function TeamPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="text-left p-3 font-medium text-zinc-500">Nama</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Peran</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Telepon</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Email</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Aktif</th>
+                  <SortableTh label="Nama" field="name" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Peran" field="role" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Telepon" field="phone" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Email" field="email" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
+                  <SortableTh label="Aktif" field="isActive" sortField={sortField} sortDir={sortDir} onSort={requestSort} />
                   <th className="text-left p-3 font-medium text-zinc-500">Aksi</th>
                 </tr>
               </thead>
@@ -157,10 +183,10 @@ export default function TeamPage() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editId ? 'Edit Anggota' : 'Tambah Anggota'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2"><Label>Nama *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>
-            <div className="space-y-2"><Label>Peran *</Label><Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="Fotografer, Videografer, Editor" required /></div>
-            <div className="space-y-2"><Label>Telepon</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Nama *</Label><Input value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); if (formErrors.name) setFormErrors(prev => { const { name: _, ...rest } = prev; return rest; }); }} required />{formErrors.name && <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>}</div>
+            <div className="space-y-2"><Label>Peran *</Label><Input value={form.role} onChange={e => { setForm(f => ({ ...f, role: e.target.value })); if (formErrors.role) setFormErrors(prev => { const { role: _, ...rest } = prev; return rest; }); }} placeholder="Fotografer, Videografer, Editor" required />{formErrors.role && <p className="text-xs text-red-500 mt-1">{formErrors.role}</p>}</div>
+            <div className="space-y-2"><Label>Telepon</Label><Input value={form.phone} onChange={e => { setForm(f => ({ ...f, phone: e.target.value })); if (formErrors.phone) setFormErrors(prev => { const { phone: _, ...rest } = prev; return rest; }); }} />{formErrors.phone && <p className="text-xs text-red-500 mt-1">{formErrors.phone}</p>}</div>
+            <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={e => { setForm(f => ({ ...f, email: e.target.value })); if (formErrors.email) setFormErrors(prev => { const { email: _, ...rest } = prev; return rest; }); }} />{formErrors.email && <p className="text-xs text-red-500 mt-1">{formErrors.email}</p>}</div>
             <div className="flex items-center gap-3">
               <Switch checked={form.isActive} onCheckedChange={(v) => setForm(f => ({ ...f, isActive: v }))} />
               <Label>Aktif</Label>
@@ -169,6 +195,16 @@ export default function TeamPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Hapus anggota ini?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
