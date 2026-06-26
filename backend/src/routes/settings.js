@@ -2,6 +2,19 @@ const router = require('express').Router();
 const prisma = require('../config/db');
 const auth = require('../middleware/auth');
 
+const updatableFields = [
+  'bookingFormGreeting', 'settlementGreeting', 'paymentMethods', 'bankAccounts',
+  'qrisImage', 'customStatuses', 'eventTypes',
+  'googleCalendarId', 'googleAccessToken', 'googleRefreshToken', 'googleTokenExpiry',
+  'googleDriveFolderId', 'telegramChatId',
+  'seoTitle', 'seoDescription', 'seoKeywords',
+  'vendorSlug', 'vendorTagline', 'vendorDescription', 'vendorLogo', 'vendorBanner',
+  'vendorPrimaryColor', 'vendorAccentColor', 'vendorCustomFields',
+  'vendorLandingHtml', 'vendorTermsHtml',
+  'vendorPhone', 'vendorEmail', 'vendorAddress',
+  'vendorSocialInstagram', 'vendorSocialTiktok', 'vendorSocialFacebook'
+];
+
 router.get('/', auth, async (req, res) => {
   try {
     let settings = await prisma.setting.findUnique({ where: { userId: req.userId } });
@@ -16,7 +29,16 @@ router.get('/', auth, async (req, res) => {
 
 router.put('/', auth, async (req, res) => {
   try {
-    const data = req.body;
+    const rawData = req.body;
+    const data = {};
+    for (const field of updatableFields) {
+      if (rawData[field] !== undefined) data[field] = rawData[field];
+    }
+    // Handle nested studioName from user object
+    if (rawData.user?.studioName !== undefined) {
+      await prisma.user.update({ where: { id: req.userId }, data: { studioName: rawData.user.studioName } });
+    }
+
     let settings = await prisma.setting.findUnique({ where: { userId: req.userId } });
     if (!settings) {
       settings = await prisma.setting.create({ data: { userId: req.userId, ...data } });
