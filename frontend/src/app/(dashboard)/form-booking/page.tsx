@@ -197,9 +197,17 @@ export default function FormBookingPage() {
             </div>
           </div>
           {/* Color Preview */}
-          <div className="p-4 rounded-lg border" style={{ backgroundColor: settings?.vendorPrimaryColor || '#7c3aed' }}>
-            <p className="text-white font-bold text-lg">{settings?.user?.studioName || 'Studio Name'}</p>
-            <p className="text-white/80 text-sm">{settings?.vendorTagline || 'Tagline'}</p>
+          <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: settings?.vendorPrimaryColor || '#7c3aed' }}>
+            {settings?.vendorBanner && <img src={settings.vendorBanner} alt="Banner" className="w-full h-24 object-cover" />}
+            <div className="p-4">
+              <div className="flex items-center gap-3">
+                {settings?.vendorLogo && <img src={settings.vendorLogo} alt="Logo" className="h-10 w-10 rounded-full object-cover border border-white/30" />}
+                <div>
+                  <p className="text-white font-bold">{settings?.user?.studioName || 'Studio Name'}</p>
+                  <p className="text-white/80 text-sm">{settings?.vendorTagline || 'Tagline'}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

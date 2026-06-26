@@ -90,8 +90,13 @@ export default function VendorPage() {
   return (
     <div className="min-h-screen" style={{ '--pc': primaryColor, '--ac': vendor.accentColor || '#a78bfa' } as any}>
       {/* Header */}
-      <header className="text-white py-12 px-4" style={{ background: `linear-gradient(135deg, ${primaryColor}, ${vendor.accentColor || '#a78bfa'})` }}>
-        <div className="max-w-2xl mx-auto text-center">
+      <header className="text-white px-4" style={{ background: `linear-gradient(135deg, ${primaryColor}, ${vendor.accentColor || '#a78bfa'})` }}>
+        {vendor.banner && (
+          <div className="max-w-2xl mx-auto pt-4">
+            <img src={vendor.banner} alt="Banner" className="w-full h-40 sm:h-52 object-cover rounded-xl" />
+          </div>
+        )}
+        <div className={`max-w-2xl mx-auto text-center ${vendor.banner ? 'py-6' : 'py-12'}`}>
           {vendor.logo && <img src={vendor.logo} alt={vendor.name} className="h-16 w-16 mx-auto rounded-full object-cover mb-4 border-2 border-white/30" />}
           <h1 className="text-3xl font-bold">{vendor.name}</h1>
           {vendor.tagline && <p className="text-white/80 mt-2">{vendor.tagline}</p>}
