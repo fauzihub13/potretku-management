@@ -11,19 +11,36 @@ router.get('/summary', auth, async (req, res) => {
       if (startDate) where.sessionDate.gte = new Date(startDate);
       if (endDate) where.sessionDate.lte = new Date(endDate);
     }
-    const [totalRevenue, paidRevenue, outstanding, bookingCount, dpPaid, finalPaid] = await Promise.all([
-      prisma.booking.aggregate({ where, _sum: { totalAmount: true } }),
-      prisma.booking.aggregate({ where: { ...where, finalPaid: true }, _sum: { totalAmount: true } }),
-      prisma.booking.aggregate({ where: { ...where, finalPaid: false }, _sum: { dpAmount: true } }),
-      prisma.booking.count({ where }),
-      prisma.booking.count({ where: { ...where, dpPaid: true } }),
-      prisma.booking.count({ where: { ...where, finalPaid: true } })
-    ]);
-    const statusBreakdown = await prisma.booking.groupBy({ by: ['status'], where, _count: true, _sum: { totalAmount: true } });
+
+    const allBookings = await prisma.booking.findMany({
+      where,
+      select: { totalAmount: true, dpAmount: true, dpPaid: true, finalPaid: true }
+    });
+
+    const totalRevenue = allBookings.reduce((sum, b) => sum + b.totalAmount, 0);
+
+    // Sudah dibayar = DP yang sudah masuk + pelunasan yang sudah masuk
+    const collected = allBookings.reduce((sum, b) => {
+      let paid = 0;
+      if (b.dpPaid) paid += b.dpAmount;
+      if (b.finalPaid) paid += (b.totalAmount - b.dpAmount);
+      return sum + paid;
+    }, 0);
+
+    const outstanding = totalRevenue - collected;
+    const bookingCount = allBookings.length;
+
+    const dpPaid = allBookings.filter(b => b.dpPaid).length;
+    const finalPaid = allBookings.filter(b => b.finalPaid).length;
+
+    const statusBreakdown = await prisma.booking.groupBy({
+      by: ['status'], where, _count: true, _sum: { totalAmount: true }
+    });
+
     res.json({
-      totalRevenue: totalRevenue._sum.totalAmount || 0,
-      paidRevenue: paidRevenue._sum.totalAmount || 0,
-      outstanding: outstanding._sum.dpAmount || 0,
+      totalRevenue,
+      collected,
+      outstanding,
       bookingCount,
       dpPaid,
       finalPaid,

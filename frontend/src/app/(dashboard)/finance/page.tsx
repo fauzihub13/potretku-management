@@ -36,10 +36,10 @@ export default function FinancePage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" /></div>;
 
   const statCards = summary ? [
-    { label: 'Total Pendapatan', value: formatCurrency(summary.totalRevenue), icon: DollarSign, color: 'text-green-600 bg-green-50 dark:bg-green-900/30' },
-    { label: 'Sudah Dibayar', value: formatCurrency(summary.paidRevenue), icon: TrendingUp, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/30' },
-    { label: 'Belum Dibayar', value: formatCurrency(summary.outstanding), icon: Clock, color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30' },
-    { label: 'Total Pemesanan', value: summary.bookingCount, icon: BarChart3, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/30' },
+    { label: 'Total Pendapatan', value: formatCurrency(summary.totalRevenue), icon: DollarSign, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/30' },
+    { label: 'Sudah Diterima', value: formatCurrency(summary.collected), icon: TrendingUp, color: 'text-green-600 bg-green-50 dark:bg-green-900/30' },
+    { label: 'Belum Diterima', value: formatCurrency(summary.outstanding), icon: Clock, color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30' },
+    { label: 'Total Pemesanan', value: summary.bookingCount, icon: BarChart3, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/30' },
   ] : [];
 
   const pieData = byStatus.map((s: any) => ({
