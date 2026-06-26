@@ -79,6 +79,22 @@ router.put('/me', auth, async (req, res) => {
   res.json(user);
 });
 
+router.put('/change-password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Password lama dan baru wajib diisi' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password baru minimal 6 karakter' });
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    const valid = await bcrypt.compare(currentPassword, user.password);
+    if (!valid) return res.status(400).json({ error: 'Password lama salah' });
+    const hash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: req.userId }, data: { password: hash } });
+    res.json({ message: 'Password berhasil diubah' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/logout', auth, async (req, res) => {
   const header = req.headers.authorization;
   const token = header.split(' ')[1];

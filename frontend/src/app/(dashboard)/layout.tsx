@@ -12,6 +12,7 @@ const pageTitles: Record<string, string> = {
   '/finance': 'Ringkasan Keuangan',
   '/invoices': 'Faktur & Pelunasan',
   '/templates': 'Templat',
+  '/profile': 'Profil Saya',
   '/settings': 'Pengaturan',
 };
 
