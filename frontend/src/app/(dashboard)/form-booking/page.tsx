@@ -136,12 +136,48 @@ export default function FormBookingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>URL Logo</Label>
-              <Input value={settings?.vendorLogo || ''} onChange={e => update('vendorLogo', e.target.value)} placeholder="https://..." />
+              <Label>Logo</Label>
+              <div className="flex items-center gap-3">
+                {settings?.vendorLogo && <img src={settings.vendorLogo} alt="Logo" className="h-12 w-12 rounded-lg object-cover border" />}
+                <label className="flex-1">
+                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    try {
+                      const res = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                      update('vendorLogo', res.data.url);
+                      toast.success('Logo diunggah');
+                    } catch { toast.error('Gagal upload'); }
+                  }} />
+                  <span className="flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm text-zinc-500">
+                    📷 {settings?.vendorLogo ? 'Ganti Logo' : 'Pilih Logo'}
+                  </span>
+                </label>
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>URL Banner</Label>
-              <Input value={settings?.vendorBanner || ''} onChange={e => update('vendorBanner', e.target.value)} placeholder="https://..." />
+              <Label>Banner</Label>
+              <div className="space-y-2">
+                {settings?.vendorBanner && <img src={settings.vendorBanner} alt="Banner" className="h-16 w-full rounded-lg object-cover border" />}
+                <label>
+                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    try {
+                      const res = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                      update('vendorBanner', res.data.url);
+                      toast.success('Banner diunggah');
+                    } catch { toast.error('Gagal upload'); }
+                  }} />
+                  <span className="flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm text-zinc-500">
+                    🖼️ {settings?.vendorBanner ? 'Ganti Banner' : 'Pilih Banner'}
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
