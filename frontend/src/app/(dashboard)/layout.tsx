@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dasbor',
   '/bookings': 'Pemesanan',
+  '/calendar': 'Kalender',
   '/services': 'Layanan & Paket',
   '/team': 'Tim & Freelancer',
   '/finance': 'Ringkasan Keuangan',

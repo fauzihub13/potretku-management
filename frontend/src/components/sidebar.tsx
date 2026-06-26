@@ -6,13 +6,14 @@ import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Calendar, Package, Users, DollarSign,
-  FileText, Settings, LogOut, ChevronLeft, FormInput, User
+  FileText, Settings, LogOut, ChevronLeft, FormInput, User, CalendarDays
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { label: 'Dasbor', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Pemesanan', href: '/bookings', icon: Calendar },
+  { label: 'Kalender', href: '/calendar', icon: CalendarDays },
   { label: 'Layanan', href: '/services', icon: Package },
   { label: 'Tim', href: '/team', icon: Users },
   { label: 'Keuangan', href: '/finance', icon: DollarSign },
