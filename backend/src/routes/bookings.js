@@ -88,6 +88,74 @@ router.get('/stats', auth, async (req, res) => {
   }
 });
 
+router.get('/export', auth, async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    const { status, startDate, endDate } = req.query;
+    const where = { userId: req.userId };
+    if (status) where.status = status;
+    if (startDate || endDate) {
+      where.sessionDate = {};
+      if (startDate) where.sessionDate.gte = new Date(startDate);
+      if (endDate) where.sessionDate.lte = new Date(endDate);
+    }
+    const bookings = await prisma.booking.findMany({
+      where,
+      include: { freelancer: true },
+      orderBy: { sessionDate: 'desc' }
+    });
+
+    const statusMap = {
+      pending: 'Menunggu', confirmed: 'Dikonfirmasi', scheduled: 'Terjadwal',
+      in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan'
+    };
+
+    const rows = bookings.map(b => ({
+      'Kode': b.bookingCode,
+      'Nama Klien': b.clientName,
+      'Email': b.clientEmail || '',
+      'Telepon': b.clientPhone || '',
+      'Jenis Acara': b.eventType,
+      'Tanggal Sesi': new Date(b.sessionDate).toLocaleDateString('id-ID'),
+      'Jam Mulai': b.sessionTime || '',
+      'Paket': b.packageName,
+      'Total': b.totalAmount,
+      'DP': b.dpAmount,
+      'DP Terbayar': b.dpPaid ? 'Lunas' : 'Belum',
+      'Pelunasan': b.finalPaid ? 'Lunas' : 'Belum',
+      'Status': statusMap[b.status] || b.status,
+      'Freelancer': b.freelancer?.name || '',
+      'Lokasi': b.location || '',
+      'Catatan': b.notes || '',
+      'Link All Foto': b.driveAllPhotos || '',
+      'Link RAW': b.driveRawPhotos || '',
+      'Link Edited': b.driveEditedPhotos || '',
+      'Dibuat': new Date(b.createdAt).toLocaleDateString('id-ID')
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 22 }, { wch: 22 }, { wch: 16 },
+      { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 20 },
+      { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+      { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 25 },
+      { wch: 35 }, { wch: 35 }, { wch: 35 }, { wch: 14 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Pemesanan');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=pemesanan.xlsx');
+    res.send(buf);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/calendar', auth, async (req, res) => {
   try {
     const { month, year } = req.query;
