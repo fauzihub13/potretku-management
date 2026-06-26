@@ -13,6 +13,7 @@ const pageTitles: Record<string, string> = {
   '/team-payments': 'Bayaran Tim',
   '/finance': 'Ringkasan Keuangan',
   '/invoices': 'Faktur & Pelunasan',
+  '/form-booking': 'Form Booking Publik',
   '/templates': 'Templat',
   '/profile': 'Profil Saya',
   '/settings': 'Pengaturan',

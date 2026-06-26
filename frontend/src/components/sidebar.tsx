@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Calendar, Package, Users, DollarSign,
-  FileText, Settings, LogOut, ChevronLeft, FormInput, User, CalendarDays, CreditCard
+  FileText, Settings, LogOut, ChevronLeft, FormInput, User, CalendarDays, CreditCard, Globe
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -19,6 +19,7 @@ const navItems = [
   { label: 'Bayaran Tim', href: '/team-payments', icon: CreditCard },
   { label: 'Keuangan', href: '/finance', icon: DollarSign },
   { label: 'Faktur', href: '/invoices', icon: FileText },
+  { label: 'Form Booking', href: '/form-booking', icon: Globe },
   { label: 'Templat', href: '/templates', icon: FormInput },
   { label: 'Profil', href: '/profile', icon: User },
   { label: 'Pengaturan', href: '/settings', icon: Settings },
