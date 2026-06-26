@@ -171,120 +171,187 @@ router.get('/:id/invoice', auth, async (req, res) => {
       pending: 'Menunggu', confirmed: 'Dikonfirmasi', scheduled: 'Terjadwal',
       in_progress: 'Sedang Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan'
     };
+    const statusColor = {
+      pending: '#f59e0b', confirmed: '#3b82f6', scheduled: '#8b5cf6',
+      in_progress: '#6366f1', completed: '#22c55e', cancelled: '#ef4444'
+    };
 
-    const formatRp = (n) => 'Rp' + Number(n).toLocaleString('id-ID');
+    const formatRp = function(n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); };
+    const formatDate = function(d) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); };
 
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const doc = new PDFDocument({ size: 'A4', margin: 0 });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=faktur-${booking.bookingCode}.pdf`);
+    res.setHeader('Content-Disposition', 'attachment; filename=faktur-' + booking.bookingCode + '.pdf');
     doc.pipe(res);
 
-    // Header
-    doc.fontSize(20).font('Helvetica-Bold').text('FAKTUR', { align: 'right' });
-    doc.fontSize(10).font('Helvetica').fillColor('#666666');
-    doc.text(`Kode: ${booking.bookingCode}`, { align: 'right' });
-    doc.text(`Tanggal: ${new Date(booking.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, { align: 'right' });
-    doc.text(`Status: ${statusMap[booking.status] || booking.status}`, { align: 'right' });
-    doc.fillColor('#000000');
-    doc.moveDown(2);
+    var purple = '#7c3aed';
+    var darkPurple = '#5b21b6';
+    var gray = '#6b7280';
+    var lightGray = '#f9fafb';
+    var border = '#e5e7eb';
+    var black = '#111827';
+    var W = 595.28;
+    var LM = 50;
+    var RM = W - 50;
 
-    // Studio Info
-    doc.fontSize(14).font('Helvetica-Bold').text(user.studioName || 'Studio');
-    doc.fontSize(9).font('Helvetica').fillColor('#666666');
-    if (user.studioAddress) doc.text(user.studioAddress);
-    if (user.studioPhone) doc.text(user.studioPhone);
-    doc.text(user.email);
-    doc.fillColor('#000000');
-    doc.moveDown(1);
+    // === HEADER BAND ===
+    doc.rect(0, 0, W, 100).fill(purple);
+    doc.rect(0, 98, W, 4).fill(darkPurple);
 
-    // Divider
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
-    doc.moveDown(1);
+    doc.fontSize(22).font('Helvetica-Bold').fillColor('#ffffff')
+      .text(user.studioName || 'Studio', LM, 25, { width: 300 });
+    doc.fontSize(9).font('Helvetica').fillColor('rgba(255,255,255,0.8)');
+    var studioInfo = '';
+    if (user.studioAddress) studioInfo += user.studioAddress;
+    if (user.studioPhone) studioInfo += (studioInfo ? '  |  ' : '') + user.studioPhone;
+    studioInfo += (studioInfo ? '  |  ' : '') + user.email;
+    doc.text(studioInfo, LM, 52, { width: 400 });
 
-    // Client Info
-    doc.fontSize(10).font('Helvetica-Bold').text('Klien');
-    doc.font('Helvetica').text(booking.clientName);
-    if (booking.clientEmail) doc.text(booking.clientEmail);
-    if (booking.clientPhone) doc.text(booking.clientPhone);
-    doc.moveDown(1);
+    doc.fontSize(28).font('Helvetica-Bold').fillColor('#ffffff')
+      .text('FAKTUR', RM - 150, 22, { width: 150, align: 'right' });
 
-    // Session Info
-    doc.font('Helvetica-Bold').text('Detail Sesi');
-    doc.font('Helvetica');
-    doc.text(`Acara: ${booking.eventType}`);
-    doc.text(`Tanggal: ${new Date(booking.sessionDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`);
-    if (booking.sessionTime) doc.text(`Jam: ${booking.sessionTime} WIB`);
-    if (booking.location) doc.text(`Lokasi: ${booking.location}`);
-    doc.moveDown(1);
+    // === INVOICE INFO BOX ===
+    var infoY = 120;
+    doc.roundedRect(LM, infoY, RM - LM, 55, 6).fill(lightGray);
 
-    // Divider
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
-    doc.moveDown(1);
+    doc.fontSize(8).font('Helvetica').fillColor(gray);
+    doc.text('NO. FAKTUR', LM + 12, infoY + 10, { width: 100 });
+    doc.text('TANGGA', LM + 140, infoY + 10, { width: 100 });
+    doc.text('STATUS', LM + 290, infoY + 10, { width: 100 });
+    doc.text('JATUH TEMPO', LM + 400, infoY + 10, { width: 100 });
 
-    // Items
-    doc.font('Helvetica-Bold').text('Rincian Biaya');
-    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(black);
+    doc.text(booking.bookingCode, LM + 12, infoY + 25, { width: 120 });
+    doc.text(formatDate(booking.createdAt), LM + 140, infoY + 25, { width: 130 });
+
+    // Status badge
+    var stColor = statusColor[booking.status] || gray;
+    var stLabel = statusMap[booking.status] || booking.status;
+    doc.roundedRect(LM + 290, infoY + 22, 85, 18, 4).fill(stColor);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff')
+      .text(stLabel, LM + 290, infoY + 26, { width: 85, align: 'center' });
+
+    // Deadline
+    var deadline = booking.deadline ? formatDate(booking.deadline) : '-';
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(black)
+      .text(deadline, LM + 400, infoY + 25, { width: 130 });
+
+    // === CLIENT & SESSION - SIDE BY SIDE ===
+    var sectionY = 195;
+
+    // Client box
+    doc.roundedRect(LM, sectionY, 235, 85, 6).lineWidth(0.5).stroke(border);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(purple)
+      .text('DITUJUKAN KE', LM + 12, sectionY + 10);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(black)
+      .text(booking.clientName, LM + 12, sectionY + 24, { width: 210 });
+    doc.fontSize(9).font('Helvetica').fillColor(gray);
+    var cy = sectionY + 40;
+    if (booking.clientEmail) { doc.text(booking.clientEmail, LM + 12, cy, { width: 210 }); cy += 13; }
+    if (booking.clientPhone) { doc.text(booking.clientPhone, LM + 12, cy, { width: 210 }); cy += 13; }
+
+    // Session box
+    doc.roundedRect(LM + 250, sectionY, 295, 85, 6).lineWidth(0.5).stroke(border);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(purple)
+      .text('DETAIL SESI', LM + 262, sectionY + 10);
+    doc.fontSize(9).font('Helvetica').fillColor(black);
+    var sy = sectionY + 25;
+    doc.text('Acara    : ' + booking.eventType, LM + 262, sy, { width: 270 }); sy += 14;
+    doc.text('Tanggal  : ' + formatDate(booking.sessionDate), LM + 262, sy, { width: 270 }); sy += 14;
+    if (booking.sessionTime) { doc.text('Jam      : ' + booking.sessionTime + ' WIB', LM + 262, sy, { width: 270 }); sy += 14; }
+    if (booking.location) { doc.text('Lokasi   : ' + booking.location, LM + 262, sy, { width: 270 }); }
+
+    // === TABLE ===
+    var tableY = 300;
 
     // Table header
-    const tableTop = doc.y;
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#666666');
-    doc.text('Deskripsi', 50, tableTop, { width: 300 });
-    doc.text('Jumlah', 400, tableTop, { width: 145, align: 'right' });
-    doc.fillColor('#000000');
+    doc.roundedRect(LM, tableY, RM - LM, 25, 4).fill(purple);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor('#ffffff');
+    doc.text('DESKRIPSI', LM + 12, tableY + 8, { width: 280 });
+    doc.text('QTY', LM + 300, tableY + 8, { width: 40, align: 'center' });
+    doc.text('HARGA', LM + 350, tableY + 8, { width: 100, align: 'right' });
+    doc.text('SUBTOTAL', RM - 120, tableY + 8, { width: 108, align: 'right' });
 
-    doc.moveTo(50, tableTop + 15).lineTo(545, tableTop + 15).stroke('#e5e7eb');
-    doc.moveDown(1);
+    var rowY = tableY + 30;
+    var rowNum = 0;
 
     // Package row
-    doc.fontSize(10).font('Helvetica');
-    doc.text(booking.packageName, 50, doc.y, { width: 300 });
-    doc.text(formatRp(booking.totalAmount), 400, doc.y - 15, { width: 145, align: 'right' });
+    if (rowNum % 2 === 0) doc.rect(LM, rowY, RM - LM, 28).fill(lightGray);
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(black);
+    doc.text(booking.packageName, LM + 12, rowY + 8, { width: 280 });
+    doc.font('Helvetica').fillColor(gray);
+    doc.text('1', LM + 300, rowY + 8, { width: 40, align: 'center' });
+    doc.text(formatRp(booking.packagePrice || booking.totalAmount), LM + 350, rowY + 8, { width: 100, align: 'right' });
+    doc.font('Helvetica-Bold').fillColor(black);
+    doc.text(formatRp(booking.totalAmount), RM - 120, rowY + 8, { width: 108, align: 'right' });
+    rowY += 28;
+    rowNum++;
 
-    // Additional costs
-    const additionalCosts = JSON.parse(booking.addons || '[]');
-    additionalCosts.forEach(function(addon) {
-      doc.text(addon.name || 'Tambahan', 50, doc.y + 5, { width: 300 });
-      doc.text(formatRp(addon.price || 0), 400, doc.y - 15, { width: 145, align: 'right' });
+    // Additional costs from addons
+    var addons = JSON.parse(booking.addons || '[]');
+    addons.forEach(function(addon) {
+      if (rowNum % 2 === 0) doc.rect(LM, rowY, RM - LM, 25).fill(lightGray);
+      doc.fontSize(9).font('Helvetica').fillColor(black);
+      doc.text(addon.name || 'Tambahan', LM + 12, rowY + 6, { width: 280 });
+      doc.fillColor(gray).text('1', LM + 300, rowY + 6, { width: 40, align: 'center' });
+      doc.text(formatRp(addon.price || 0), LM + 350, rowY + 6, { width: 100, align: 'right' });
+      doc.font('Helvetica-Bold').fillColor(black);
+      doc.text(formatRp(addon.price || 0), RM - 120, rowY + 6, { width: 108, align: 'right' });
+      rowY += 25;
+      rowNum++;
     });
 
-    doc.moveDown(1);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
-    doc.moveDown(0.5);
+    // Separator
+    rowY += 5;
+    doc.moveTo(LM, rowY).lineTo(RM, rowY).lineWidth(0.5).stroke(border);
+    rowY += 10;
 
-    // Total
-    doc.fontSize(11).font('Helvetica-Bold');
-    doc.text('Total', 50, doc.y, { width: 300 });
-    doc.text(formatRp(booking.totalAmount), 400, doc.y - 15, { width: 145, align: 'right' });
+    // === TOTALS ===
+    var totalX = RM - 230;
+    var totLabelW = 120;
+    var totValW = 108;
 
-    doc.moveDown(1);
+    doc.fontSize(9).font('Helvetica').fillColor(gray);
+    doc.text('Subtotal', totalX, rowY, { width: totLabelW });
+    doc.text(formatRp(booking.totalAmount), RM - 12, rowY, { width: totValW, align: 'right' });
+    rowY += 18;
 
-    // DP
-    doc.fontSize(10).font('Helvetica');
-    doc.text(`DP: ${formatRp(booking.dpAmount)}`, 50, doc.y, { width: 300 });
-    doc.text(booking.dpPaid ? 'Lunas' : 'Belum', 400, doc.y - 15, { width: 145, align: 'right' });
+    doc.text('DP (' + formatRp(booking.dpAmount) + ')', totalX, rowY, { width: totLabelW });
+    doc.fillColor(booking.dpPaid ? '#22c55e' : '#ef4444');
+    doc.text(booking.dpPaid ? '- ' + formatRp(booking.dpAmount) : 'Belum', RM - 12, rowY, { width: totValW, align: 'right' });
+    rowY += 18;
 
-    doc.moveDown(0.5);
+    doc.moveTo(totalX, rowY).lineTo(RM, rowY).lineWidth(1).stroke(purple);
+    rowY += 8;
 
-    // Remaining
-    const remaining = booking.totalAmount - (booking.dpPaid ? booking.dpAmount : 0);
-    doc.text('Sisa Pembayaran', 50, doc.y, { width: 300 });
-    doc.text(formatRp(remaining), 400, doc.y - 15, { width: 145, align: 'right' });
+    var remaining = booking.totalAmount - (booking.dpPaid ? booking.dpAmount : 0);
+    doc.fontSize(12).font('Helvetica-Bold').fillColor(purple);
+    doc.text('SISA BAYAR', totalX, rowY, { width: totLabelW });
+    doc.text(formatRp(remaining), RM - 12, rowY, { width: totValW, align: 'right' });
 
-    doc.moveDown(2);
+    // === PAYMENT STATUS BOX ===
+    rowY += 40;
+    doc.roundedRect(LM, rowY, RM - LM, 40, 6).fill(lightGray);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(gray).text('STATUS PEMBAYARAN', LM + 12, rowY + 8);
 
-    // Payment Status
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#666666').text('Status Pembayaran');
-    doc.font('Helvetica');
-    doc.text(`DP: ${booking.dpPaid ? 'Lunas' : 'Belum Dibayar'}`);
-    doc.text(`Pelunasan: ${booking.finalPaid ? 'Lunas' : 'Belum Dibayar'}`);
-    doc.fillColor('#000000');
-    doc.moveDown(2);
+    // DP status dot
+    doc.circle(LM + 12, rowY + 27, 4).fill(booking.dpPaid ? '#22c55e' : '#f59e0b');
+    doc.fontSize(9).font('Helvetica').fillColor(black)
+      .text('DP: ' + (booking.dpPaid ? 'Lunas' : 'Belum'), LM + 22, rowY + 22);
 
-    // Footer
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e5e7eb');
-    doc.moveDown(1);
-    doc.fontSize(8).font('Helvetica').fillColor('#999999').text('Terima kasih atas kepercayaan Anda.', { align: 'center' });
-    doc.text(`${user.studioName || 'Studio'} - ${user.email}`, { align: 'center' });
+    // Final status dot
+    doc.circle(LM + 150, rowY + 27, 4).fill(booking.finalPaid ? '#22c55e' : '#f59e0b');
+    doc.text('Pelunasan: ' + (booking.finalPaid ? 'Lunas' : 'Belum'), LM + 160, rowY + 22);
+
+    // === FOOTER ===
+    var footerY = rowY + 65;
+    doc.moveTo(LM, footerY).lineTo(RM, footerY).lineWidth(0.5).stroke(border);
+    footerY += 15;
+    doc.fontSize(8).font('Helvetica').fillColor(gray)
+      .text('Terima kasih atas kepercayaan Anda.', LM, footerY, { width: RM - LM, align: 'center' });
+    footerY += 13;
+    doc.fontSize(7).fillColor('#9ca3af')
+      .text((user.studioName || '') + '  |  ' + user.email + '  |  Dicetak: ' + formatDate(new Date()), LM, footerY, { width: RM - LM, align: 'center' });
 
     doc.end();
   } catch (err) {
