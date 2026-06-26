@@ -22,22 +22,26 @@ router.get('/', auth, async (req, res) => {
 router.get('/summary', auth, async (req, res) => {
   try {
     const members = await prisma.teamMember.findMany({
-      where: { userId: req.userId, isActive: true },
+      where: { userId: req.userId },
       include: {
-        bookings: { select: { id: true, totalAmount: true, dpPaid: true, finalPaid: true, status: true } },
+        bookings: {
+          select: { id: true, bookingCode: true, clientName: true, eventType: true, sessionDate: true, totalAmount: true, status: true, dpPaid: true, finalPaid: true },
+          orderBy: { sessionDate: 'desc' }
+        },
         teamPayments: { select: { amount: true, status: true } }
       }
     });
 
     const summary = members.map(m => {
-      const totalEarning = m.bookings.reduce((sum, b) => sum + (b.totalAmount * 0.1), 0); // 10% default
       const totalPaid = m.teamPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
       const totalUnpaid = m.teamPayments.filter(p => p.status === 'unpaid').reduce((sum, p) => sum + p.amount, 0);
       return {
         id: m.id,
         name: m.name,
         role: m.role,
+        isActive: m.isActive,
         bookingCount: m.bookings.length,
+        bookings: m.bookings,
         totalPaid,
         totalUnpaid,
         totalAll: totalPaid + totalUnpaid

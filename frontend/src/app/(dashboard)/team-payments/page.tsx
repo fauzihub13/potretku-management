@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,11 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { formatCurrency, formatDate } from '@/lib/utils-helpers';
-import { Plus, CheckCircle, Clock, Trash2, CreditCard, Users } from 'lucide-react';
+import { formatCurrency, formatDate, statusColors, statusLabels } from '@/lib/utils-helpers';
+import { Plus, CheckCircle, Clock, Trash2, CreditCard, Users, ChevronDown, ChevronRight, Calendar, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function TeamPaymentsPage() {
+  const router = useRouter();
   const [payments, setPayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
@@ -23,13 +25,14 @@ export default function TeamPaymentsPage() {
   const [dialog, setDialog] = useState(false);
   const [filterMember, setFilterMember] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [form, setForm] = useState({ teamMemberId: '', bookingId: '', amount: 0, description: '' });
 
   const fetchData = () => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (filterMember) params.set('teamMemberId', filterMember);
-    if (filterStatus) params.set('status', filterStatus);
+    if (filterMember && filterMember !== 'all') params.set('teamMemberId', filterMember);
+    if (filterStatus && filterStatus !== 'all') params.set('status', filterStatus);
     Promise.all([
       api.get(`/team-payments?${params}`),
       api.get('/team-payments/summary'),
@@ -57,28 +60,16 @@ export default function TeamPaymentsPage() {
   };
 
   const handlePay = async (id: string) => {
-    try {
-      await api.put(`/team-payments/${id}/pay`);
-      toast.success('Ditandai sudah dibayar');
-      fetchData();
-    } catch { toast.error('Gagal'); }
+    try { await api.put(`/team-payments/${id}/pay`); toast.success('Dibayar'); fetchData(); } catch { toast.error('Gagal'); }
   };
 
   const handleUnpay = async (id: string) => {
-    try {
-      await api.put(`/team-payments/${id}/unpay`);
-      toast.success('Dibatalkan');
-      fetchData();
-    } catch { toast.error('Gagal'); }
+    try { await api.put(`/team-payments/${id}/unpay`); toast.success('Dibatalkan'); fetchData(); } catch { toast.error('Gagal'); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus pembayaran ini?')) return;
-    try {
-      await api.delete(`/team-payments/${id}`);
-      toast.success('Dihapus');
-      fetchData();
-    } catch { toast.error('Gagal'); }
+    if (!confirm('Hapus?')) return;
+    try { await api.delete(`/team-payments/${id}`); toast.success('Dihapus'); fetchData(); } catch { toast.error('Gagal'); }
   };
 
   const totalPaid = summary.reduce((s, m) => s + m.totalPaid, 0);
@@ -115,7 +106,7 @@ export default function TeamPaymentsPage() {
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-600"><Users className="h-5 w-5" /></div>
               <div>
-                <p className="text-xs text-zinc-500">Total Anggota Aktif</p>
+                <p className="text-xs text-zinc-500">Anggota</p>
                 <p className="text-xl font-bold">{summary.length} orang</p>
               </div>
             </div>
@@ -123,42 +114,84 @@ export default function TeamPaymentsPage() {
         </Card>
       </div>
 
-      {/* Per-member summary */}
+      {/* Ringkasan per Anggota — expandable */}
       <Card>
         <CardHeader><CardTitle className="text-base">Ringkasan per Anggota</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="text-left p-3 font-medium text-zinc-500">Nama</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Peran</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Booking</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Dibayar</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Belum Dibayar</th>
-                  <th className="text-left p-3 font-medium text-zinc-500">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.map(m => (
-                  <tr key={m.id} className="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer" onClick={() => setFilterMember(filterMember === m.id ? '' : m.id)}>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-700">{m.name.charAt(0)}</div>
-                        <span className="font-medium">{m.name}</span>
+          {summary.length === 0 ? (
+            <p className="text-sm text-zinc-500 text-center py-8">Belum ada data</p>
+          ) : (
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {summary.map(m => {
+                const isExpanded = expandedMember === m.id;
+                return (
+                  <div key={m.id}>
+                    {/* Member row */}
+                    <div
+                      onClick={() => setExpandedMember(isExpanded ? null : m.id)}
+                      className="flex items-center gap-4 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer transition-colors"
+                    >
+                      <div className="h-9 w-9 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-sm font-bold text-purple-700 flex-shrink-0">
+                        {m.name.charAt(0)}
                       </div>
-                    </td>
-                    <td className="p-3"><Badge variant="outline">{m.role}</Badge></td>
-                    <td className="p-3">{m.bookingCount}</td>
-                    <td className="p-3 text-green-600 font-medium">{formatCurrency(m.totalPaid)}</td>
-                    <td className="p-3 text-yellow-600 font-medium">{formatCurrency(m.totalUnpaid)}</td>
-                    <td className="p-3 font-bold">{formatCurrency(m.totalAll)}</td>
-                  </tr>
-                ))}
-                {summary.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-zinc-500">Belum ada data</td></tr>}
-              </tbody>
-            </table>
-          </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate">{m.name}</p>
+                          <Badge variant="outline" className="text-xs">{m.role}</Badge>
+                          {!m.isActive && <Badge variant="secondary" className="text-xs">Nonaktif</Badge>}
+                        </div>
+                        <p className="text-xs text-zinc-500">{m.bookingCount} pemesanan ditangani</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold">{formatCurrency(m.totalAll)}</p>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-green-600">✓ {formatCurrency(m.totalPaid)}</span>
+                          <span className="text-yellow-600">⏳ {formatCurrency(m.totalUnpaid)}</span>
+                        </div>
+                      </div>
+                      {isExpanded ? <ChevronDown className="h-4 w-4 text-zinc-400 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 text-zinc-400 flex-shrink-0" />}
+                    </div>
+
+                    {/* Expanded bookings list */}
+                    {isExpanded && (
+                      <div className="bg-zinc-50 dark:bg-zinc-800/20 px-4 pb-4">
+                        <p className="text-xs font-medium text-zinc-500 mb-2 pt-2">Pemesanan yang ditangani:</p>
+                        {m.bookings.length === 0 ? (
+                          <p className="text-xs text-zinc-400 italic">Belum ada pemesanan</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {m.bookings.map((b: any) => (
+                              <div key={b.id} className="flex items-center justify-between p-2.5 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-100 dark:border-zinc-700/50">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-shrink-0">
+                                    <Calendar className="h-3.5 w-3.5 text-zinc-400" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-xs text-zinc-500">{b.bookingCode}</span>
+                                      <Badge className={`${statusColors[b.status]} text-[10px]`} variant="outline">{statusLabels[b.status]}</Badge>
+                                    </div>
+                                    <p className="text-sm font-medium">{b.clientName}</p>
+                                    <p className="text-xs text-zinc-500">{b.eventType} · {new Date(b.sessionDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">{formatCurrency(b.totalAmount)}</span>
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); router.push(`/bookings/${b.id}`); }}>
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -226,13 +259,9 @@ export default function TeamPaymentsPage() {
                     <td className="p-3 font-medium">{formatCurrency(p.amount)}</td>
                     <td className="p-3">
                       {p.status === 'paid' ? (
-                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                          <CheckCircle className="h-3 w-3 mr-1" /> Dibayar
-                        </Badge>
+                        <Badge className="bg-green-100 text-green-700"><CheckCircle className="h-3 w-3 mr-1" /> Dibayar</Badge>
                       ) : (
-                        <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
-                          <Clock className="h-3 w-3 mr-1" /> Belum
-                        </Badge>
+                        <Badge className="bg-yellow-100 text-yellow-700"><Clock className="h-3 w-3 mr-1" /> Belum</Badge>
                       )}
                     </td>
                     <td className="p-3">
@@ -263,7 +292,7 @@ export default function TeamPaymentsPage() {
               <Select value={form.teamMemberId} onValueChange={(v) => setForm(f => ({ ...f, teamMemberId: v || '' }))}>
                 <SelectTrigger><SelectValue placeholder="Pilih anggota" /></SelectTrigger>
                 <SelectContent>
-                  {team.map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.role})</SelectItem>)}
+                  {team.filter(t => t.isActive).map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.role})</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
