@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  avatar        String?
+  role          String    @default("owner")
+  studioName    String?
+  studioAddress String?
+  studioPhone   String?
+  studioLogo    String?
+  plan          String    @default("basic")
+  planExpiresAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  bookings      Booking[]
+  services      Service[]
+  teamMembers   TeamMember[]
+  templates     Template[]
+  settings      Setting?
+  sessions      Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id              String    @id @default(cuid())
+  bookingCode     String    @unique
+  userId          String
+  clientName      String
+  clientEmail     String?
+  clientPhone     String?
+  eventType       String
+  sessionDate     DateTime
+  sessionTime     String?
+  location        String?
+  packageName     String
+  packagePrice    Float
+  addons          String?   @default("[]")
+  totalAmount     Float
+  dpAmount        Float     @default(0)
+  dpPaid          Boolean   @default(false)
+  dpPaidAt        DateTime?
+  finalPaid       Boolean   @default(false)
+  finalPaidAt     DateTime?
+  status          String    @default("pending")
+  notes           String?
+  freelancerId    String?
+  deadline        DateTime?
+  driveAllPhotos  String?
+  driveRawPhotos  String?
+  driveEditedPhotos String?
+  calendarSynced  Boolean   @default(false)
+  customFields    String?   @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  freelancer      TeamMember? @relation(fields: [freelancerId], references: [id])
+  paymentProofs   PaymentProof[]
+  settlements     Settlement[]
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  description     String?
+  price           Float
+  discountPrice   Float?
+  durationHours   Int      @default(0)
+  durationMinutes Int      @default(0)
+  photoEditCount  Int      @default(0)
+  category        String   @default("main")
+  eventTypes      String   @default("[]")
+  city            String?
+  additionalCosts String   @default("[]")
+  location        String?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TeamMember {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  role      String
+  email     String?
+  phone     String?
+  tags      String?   @default("[]")
+  isActive  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings  Booking[]
+}
+
+model PaymentProof {
+  id          String   @id @default(cuid())
+  bookingId   String
+  type        String
+  fileUrl     String
+  fileName    String?
+  amount      Float?
+  status      String   @default("pending")
+  notes       String?
+  createdAt   DateTime @default(now())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Settlement {
+  id          String   @id @default(cuid())
+  bookingId   String
+  amount      Float
+  method      String
+  proofUrl    String?
+  notes       String?
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      String
+  content   String
+  variables String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  bookingFormGreeting String?
+  settlementGreeting String?
+  paymentMethods     String? @default("[\"bank\",\"qris\",\"cash\"]")
+  bankAccounts       String? @default("[]")
+  qrisImage          String?
+  customStatuses     String? @default("[]")
+  eventTypes         String? @default("[\"Wedding\",\"Pre-wedding\",\"Portrait\",\"Event\",\"Commercial\"]")
+  googleCalendarId   String?
+  googleDriveFolderId String?
+  telegramChatId     String?
+  seoTitle           String?
+  seoDescription     String?
+  seoKeywords        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
