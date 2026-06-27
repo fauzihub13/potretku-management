@@ -128,14 +128,27 @@ async function createPayment(booking, vendorSettings, addons) {
   const result = await response.json();
 
   if (result.message && result.message.includes('SUCCESS')) {
-    return {
-      success: true,
-      paymentUrl: result.response.payment.url,
-      sessionId: result.response.order.session_id,
-      invoiceNumber,
-      tokenId: result.response.payment.token_id,
-      expiredDate: result.response.payment.expired_date
-    };
+      // Parse expired_date from format yyyyMMddHHmmss to Date
+      let expiredDate = null;
+      const expStr = result.response.payment.expired_date;
+      if (expStr && expStr.length === 14) {
+        const y = expStr.substring(0, 4);
+        const m = expStr.substring(4, 6);
+        const d = expStr.substring(6, 8);
+        const h = expStr.substring(8, 10);
+        const mi = expStr.substring(10, 12);
+        const s = expStr.substring(12, 14);
+        expiredDate = new Date(`${y}-${m}-${d}T${h}:${mi}:${s}+07:00`);
+      }
+
+      return {
+        success: true,
+        paymentUrl: result.response.payment.url,
+        sessionId: result.response.order.session_id,
+        invoiceNumber,
+        tokenId: result.response.payment.token_id,
+        expiredDate
+      };
   }
 
   console.error('[DOKU] Payment creation failed:', result);
