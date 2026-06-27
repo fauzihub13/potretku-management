@@ -17,7 +17,6 @@ router.post('/create', async (req, res) => {
     if (!booking) return res.status(404).json({ error: 'Pemesanan tidak ditemukan' });
 
     if (!process.env.DOKU_CLIENT_ID || !process.env.DOKU_CLIENT_SECRET) {
-      // DOKU not configured, delete booking and return error
       await prisma.booking.delete({ where: { id: booking.id } });
       return res.status(500).json({ error: 'Payment gateway belum dikonfigurasi' });
     }
@@ -31,27 +30,18 @@ router.post('/create', async (req, res) => {
           dokuInvoiceNo: result.invoiceNumber,
           dokuSessionId: result.sessionId,
           dokuPaymentUrl: result.paymentUrl,
-          dokuExpiredAt: result.expiredDate ? new Date(result.expiredDate) : null,
+          dokuExpiredAt: result.expiredDate,
           dokuStatus: 'pending'
         }
       });
-
-      res.json({
-        paymentUrl: result.paymentUrl,
-        invoiceNumber: result.invoiceNumber,
-        sessionId: result.sessionId
-      });
+      res.json({ paymentUrl: result.paymentUrl, invoiceNumber: result.invoiceNumber });
     } else {
-      // DOKU gagal, hapus booking agar tidak ada data setengah jadi
       await prisma.booking.delete({ where: { id: booking.id } });
       res.status(400).json({ error: result.error || 'Gagal membuat pembayaran' });
     }
   } catch (err) {
     console.error('[DOKU] Error:', err);
-    // Coba hapus booking jika ada
-    if (req.body.bookingId) {
-      await prisma.booking.delete({ where: { id: req.body.bookingId } }).catch(() => {});
-    }
+    if (req.body.bookingId) await prisma.booking.delete({ where: { id: req.body.bookingId } }).catch(() => {});
     res.status(500).json({ error: err.message });
   }
 });
@@ -59,37 +49,25 @@ router.post('/create', async (req, res) => {
 router.post('/notification', async (req, res) => {
   try {
     const notification = req.body;
-    const headers = {
-      signature: req.headers['signature'],
-      'request-timestamp': req.headers['request-timestamp']
-    };
-
     console.log('[DOKU] Notification received:', JSON.stringify(notification));
 
-    // Find booking by invoice number
     const invoiceNumber = notification.order?.invoice_number;
-    if (!invoiceNumber) {
-      return res.status(400).json({ error: 'Invoice number not found' });
-    }
+    if (!invoiceNumber) return res.status(400).json({ error: 'Invoice not found' });
 
-    const booking = await prisma.booking.findFirst({
-      where: { dokuInvoiceNo: invoiceNumber }
-    });
+    const booking = await prisma.booking.findFirst({ where: { dokuInvoiceNo: invoiceNumber } });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
+    const dokuStatus = notification.order?.status || notification.payment?.status || notification.status;
+    console.log('[DOKU] DOKU status:', dokuStatus, 'for booking:', booking.bookingCode);
 
-    // Update booking status based on DOKU status
-    const dokuStatus = notification.order?.status || notification.status;
     let newStatus = 'pending';
     let dpPaid = booking.dpPaid;
     let finalPaid = booking.finalPaid;
 
     if (dokuStatus === 'SUCCESS' || dokuStatus === 'PAID') {
-      newStatus = 'confirmed';
-      if (!booking.dpPaid) dpPaid = true;
-    } else if (dokuStatus === 'EXPIRED' || dokuStatus === 'FAILED') {
+      newStatus = 'paid';
+      dpPaid = true;
+    } else if (dokuStatus === 'EXPIRED' || dokuStatus === 'FAILED' || dokuStatus === 'CANCELLED') {
       newStatus = 'cancelled';
     }
 
@@ -105,7 +83,7 @@ router.post('/notification', async (req, res) => {
       }
     });
 
-    console.log(`[DOKU] Booking ${booking.bookingCode} updated: status=${newStatus}, dpPaid=${dpPaid}`);
+    console.log(`[DOKU] Booking ${booking.bookingCode} updated: status=${newStatus}`);
     res.json({ status: 'OK' });
   } catch (err) {
     console.error('[DOKU] Notification error:', err);
@@ -121,9 +99,7 @@ router.get('/status/:bookingId', async (req, res) => {
     });
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
     res.json(booking);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;

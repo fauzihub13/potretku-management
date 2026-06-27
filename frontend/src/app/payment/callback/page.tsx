@@ -10,16 +10,13 @@ import Link from 'next/link';
 function CallbackContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'success' | 'pending' | 'error'>('pending');
+  const bookingCode = searchParams.get('bookingCode') || '';
 
   useEffect(() => {
-    const orderId = searchParams.get('order') || searchParams.get('invoice_number');
-    if (orderId) {
-      setStatus('success');
-    } else {
-      const error = searchParams.get('error');
-      if (error) setStatus('error');
-      else setStatus('success');
-    }
+    const order = searchParams.get('order') || searchParams.get('invoice_number');
+    if (order) setStatus('success');
+    else if (searchParams.get('error')) setStatus('error');
+    else setStatus('success');
   }, [searchParams]);
 
   return (
@@ -31,7 +28,8 @@ function CallbackContent() {
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <h1 className="text-xl font-bold">Pembayaran Berhasil!</h1>
-            <p className="text-sm text-zinc-500">Pembayaran Anda telah diterima. Pesanan sedang diproses oleh vendor.</p>
+            {bookingCode && <p className="text-lg font-mono font-bold text-purple-600">{bookingCode}</p>}
+            <p className="text-sm text-zinc-500">Pembayaran telah diterima. Silakan tunggu konfirmasi dari vendor.</p>
           </>
         )}
         {status === 'pending' && (
@@ -40,7 +38,7 @@ function CallbackContent() {
               <Clock className="h-8 w-8 text-yellow-600" />
             </div>
             <h1 className="text-xl font-bold">Menunggu Pembayaran</h1>
-            <p className="text-sm text-zinc-500">Pembayaran Anda sedang diproses. Silakan tunggu beberapa saat.</p>
+            <p className="text-sm text-zinc-500">Pembayaran sedang diproses. Silakan tunggu.</p>
           </>
         )}
         {status === 'error' && (
@@ -49,11 +47,11 @@ function CallbackContent() {
               <XCircle className="h-8 w-8 text-red-600" />
             </div>
             <h1 className="text-xl font-bold">Pembayaran Gagal</h1>
-            <p className="text-sm text-zinc-500">Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.</p>
+            <p className="text-sm text-zinc-500">Terjadi kesalahan. Silakan coba lagi.</p>
           </>
         )}
         <div className="flex gap-2 justify-center pt-4">
-          <Link href="/"><Button variant="outline">Kembali ke Beranda</Button></Link>
+          <Link href="/"><Button variant="outline">Kembali</Button></Link>
         </div>
       </CardContent>
     </Card>

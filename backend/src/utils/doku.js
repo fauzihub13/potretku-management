@@ -41,6 +41,7 @@ async function createPayment(booking, vendorSettings, addons) {
   const invoiceNumber = `INV-${booking.bookingCode}-${Date.now()}`;
   const amount = Math.round(booking.totalAmount);
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const callbackUrl = `${frontendUrl}/payment/callback?bookingCode=${booking.bookingCode}`;
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
 
   const lineItems = [
@@ -70,8 +71,8 @@ async function createPayment(booking, vendorSettings, addons) {
       amount,
       invoice_number: invoiceNumber,
       currency: 'IDR',
-      callback_url: `${frontendUrl}/payment/callback`,
-      callback_url_result: `${frontendUrl}/payment/callback`,
+      callback_url: callbackUrl,
+      callback_url_result: callbackUrl,
       language: 'ID',
       auto_redirect: true,
       line_items: lineItems

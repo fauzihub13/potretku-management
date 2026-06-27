@@ -736,9 +736,7 @@ router.put("/:id/status", auth, async (req, res) => {
     const { status } = req.body;
     const valid = [
       "pending",
-      "confirmed",
-      "scheduled",
-      "in_progress",
+      "paid",
       "completed",
       "cancelled",
     ];
