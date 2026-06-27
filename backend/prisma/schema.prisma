@@ -75,6 +75,7 @@ model Booking {
   dokuPaymentUrl  String?   @db.Text
   dokuExpiredAt   DateTime?
   dokuStatus      String?
+  dokuPaymentType String?
   customFields    String?   @default("{}")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

@@ -4,7 +4,7 @@ const { createPayment, verifyNotification } = require('../utils/doku');
 
 router.post('/create', async (req, res) => {
   try {
-    const { bookingId, slug } = req.body;
+    const { bookingId, slug, paymentType } = req.body;
     if (!bookingId || !slug) return res.status(400).json({ error: 'bookingId dan slug wajib diisi' });
 
     const setting = await prisma.setting.findUnique({ where: { vendorSlug: slug } });
@@ -21,7 +21,18 @@ router.post('/create', async (req, res) => {
       return res.status(500).json({ error: 'Payment gateway belum dikonfigurasi' });
     }
 
-    const result = await createPayment(booking, setting, booking.bookingAddons, slug);
+    // Hitung jumlah berdasarkan tipe pembayaran
+    let amount;
+    if (paymentType === 'full') {
+      amount = Math.round(booking.totalAmount);
+    } else if (paymentType === 'remaining') {
+      amount = Math.round(booking.totalAmount - booking.dpAmount);
+    } else {
+      // Default: DP (30%)
+      amount = Math.round(booking.dpAmount);
+    }
+
+    const result = await createPayment(booking, setting, booking.bookingAddons, slug, amount, paymentType);
 
     if (result.success) {
       await prisma.booking.update({
@@ -31,7 +42,8 @@ router.post('/create', async (req, res) => {
           dokuSessionId: result.sessionId,
           dokuPaymentUrl: result.paymentUrl,
           dokuExpiredAt: result.expiredDate,
-          dokuStatus: 'pending'
+          dokuStatus: 'pending',
+          dokuPaymentType: paymentType || 'dp'
         }
       });
       res.json({ paymentUrl: result.paymentUrl, invoiceNumber: result.invoiceNumber });
@@ -65,8 +77,22 @@ router.post('/notification', async (req, res) => {
     let finalPaid = booking.finalPaid;
 
     if (dokuStatus === 'SUCCESS' || dokuStatus === 'PAID') {
-      newStatus = 'paid';
-      dpPaid = true;
+      // Cek tipe pembayaran
+      const payType = booking.dokuPaymentType;
+      if (payType === 'remaining') {
+        // Pelunasan sudah dibayar
+        finalPaid = true;
+        newStatus = 'paid';
+      } else if (payType === 'full') {
+        // Bayar lunas sekaligus
+        dpPaid = true;
+        finalPaid = true;
+        newStatus = 'paid';
+      } else {
+        // DP sudah dibayar
+        dpPaid = true;
+        newStatus = 'pending'; // Masih pending, belum lunas
+      }
     } else if (dokuStatus === 'EXPIRED' || dokuStatus === 'FAILED' || dokuStatus === 'CANCELLED') {
       newStatus = 'cancelled';
     }

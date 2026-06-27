@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils-helpers';
-import { CheckCircle, Clock, XCircle, CreditCard, ArrowLeft, Package, Calendar, ArrowRight } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, CreditCard, ArrowLeft, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -26,6 +26,7 @@ export default function BookingStatusPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [paying, setPaying] = useState(false);
+  const [payType, setPayType] = useState<'dp' | 'full' | 'remaining' | null>(null);
 
   const fetchBooking = () => {
     api.get(`/vendor/${slug}/track/${code}`)
@@ -36,15 +37,20 @@ export default function BookingStatusPage() {
 
   useEffect(() => { fetchBooking(); }, [slug, code]);
 
-  const handlePay = async () => {
+  const dpAmount = booking?.dpAmount || 0;
+  const totalAmount = booking?.totalAmount || 0;
+  const remaining = totalAmount - dpAmount;
+
+  const handlePay = async (type: 'dp' | 'full' | 'remaining') => {
     setPaying(true);
+    setPayType(type);
     try {
-      const res = await api.post('/doku/create', { bookingId: booking.id, slug });
-      // Redirect to DOKU payment page
+      const res = await api.post('/doku/create', { bookingId: booking.id, slug, paymentType: type });
       window.location.href = res.data.paymentUrl;
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Gagal membuat pembayaran');
       setPaying(false);
+      setPayType(null);
     }
   };
 
@@ -54,16 +60,16 @@ export default function BookingStatusPage() {
 
   const st = statusConfig[booking.status] || statusConfig.pending;
   const StatusIcon = st.icon;
-  const canPay = booking.status === 'pending';
+  const isPending = booking.status === 'pending';
+  const isPaid = booking.status === 'paid';
+  const isCancelled = booking.status === 'cancelled';
+  const isCompleted = booking.status === 'completed';
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      {/* Header */}
       <div className="bg-white dark:bg-zinc-900 border-b p-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href={`/${slug}`} className="text-zinc-500 hover:text-zinc-700">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <Link href={`/${slug}`} className="text-zinc-500 hover:text-zinc-700"><ArrowLeft className="h-5 w-5" /></Link>
           <h1 className="font-semibold">Status Pemesanan</h1>
         </div>
       </div>
@@ -78,45 +84,104 @@ export default function BookingStatusPage() {
           <p className="text-sm text-zinc-500 mt-1">Kode: <span className="font-mono font-bold">{booking.bookingCode}</span></p>
         </div>
 
-        {/* Pay Button — tampil jika status pending */}
-        {canPay && (
-          <Button
-            className="w-full bg-purple-600 hover:bg-purple-700"
-            size="lg"
-            onClick={handlePay}
-            disabled={paying}
-          >
-            <CreditCard className="h-5 w-5 mr-2" />
-            {paying ? 'Mengarahkan ke pembayaran...' : 'Bayar Sekarang'}
-          </Button>
+        {/* Payment Breakdown */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-medium">Rincian Pembayaran</p>
+            <div className="flex justify-between text-sm"><span className="text-zinc-500">Total Pesanan</span><span className="font-bold">{formatCurrency(totalAmount)}</span></div>
+
+            {/* DP Status */}
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-zinc-500">DP (30%) — {formatCurrency(dpAmount)}</span>
+              {booking.dpPaid ? (
+                <Badge className="bg-green-100 text-green-700"><CheckCircle className="h-3 w-3 mr-1" /> Lunas</Badge>
+              ) : (
+                <Badge className="bg-yellow-100 text-yellow-700"><Clock className="h-3 w-3 mr-1" /> Belum</Badge>
+              )}
+            </div>
+
+            {/* Sisa Tagihan */}
+            {!booking.dpPaid && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-zinc-500">Sisa Tagihan — {formatCurrency(remaining)}</span>
+                <Badge className="bg-zinc-100 text-zinc-600">Belum Dibayar</Badge>
+              </div>
+            )}
+
+            {/* Final Payment Status */}
+            {booking.dpPaid && !booking.finalPaid && !isCancelled && !isCompleted && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-zinc-500">Pelunasan — {formatCurrency(remaining)}</span>
+                <Badge className="bg-yellow-100 text-yellow-700"><Clock className="h-3 w-3 mr-1" /> Belum</Badge>
+              </div>
+            )}
+
+            {booking.dpPaid && booking.finalPaid && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-zinc-500">Pelunasan</span>
+                <Badge className="bg-green-100 text-green-700"><CheckCircle className="h-3 w-3 mr-1" /> Lunas</Badge>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Payment Buttons */}
+        {!isCancelled && !isCompleted && (
+          <div className="space-y-2">
+            {/* Belum bayar apapun — tampil opsi DP atau Lunas */}
+            {!booking.dpPaid && (
+              <>
+                <Button
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  size="lg"
+                  onClick={() => handlePay('dp')}
+                  disabled={paying}
+                >
+                  <CreditCard className="h-5 w-5 mr-2" />
+                  {paying && payType === 'dp' ? 'Memproses...' : `Bayar DP — ${formatCurrency(dpAmount)}`}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handlePay('full')}
+                  disabled={paying}
+                >
+                  <CreditCard className="h-5 w-5 mr-2" />
+                  {paying && payType === 'full' ? 'Memproses...' : `Bayar Lunas — ${formatCurrency(totalAmount)}`}
+                </Button>
+              </>
+            )}
+
+            {/* Sudah bayar DP, belum lunas — tampil tombol bayar sisa */}
+            {booking.dpPaid && !booking.finalPaid && (
+              <Button
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                size="lg"
+                onClick={() => handlePay('remaining')}
+                disabled={paying}
+              >
+                <CreditCard className="h-5 w-5 mr-2" />
+                {paying && payType === 'remaining' ? 'Memproses...' : `Bayar Sisa — ${formatCurrency(remaining)}`}
+              </Button>
+            )}
+          </div>
         )}
-        {booking.status === 'cancelled' && (
+
+        {/* Dibatalkan */}
+        {isCancelled && (
           <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 text-center">
             <p className="text-sm text-red-600 font-medium">Pesanan ini telah dibatalkan oleh vendor.</p>
-            <p className="text-xs text-red-500 mt-1">Silakan hubungi vendor untuk informasi lebih lanjut.</p>
           </div>
         )}
 
         {/* Booking Details */}
         <Card>
           <CardContent className="p-4 space-y-3 text-sm">
-            <div className="flex justify-between"><span className="text-zinc-500">Kode Booking</span><span className="font-mono font-bold">{booking.bookingCode}</span></div>
-            <div className="flex justify-between"><span className="text-zinc-500">Status</span><Badge className={st.bg + ' ' + st.color}>{st.label}</Badge></div>
-            <div className="border-t pt-2 mt-2">
-              <p className="font-medium mb-2">Detail Pesanan</p>
-              <div className="flex justify-between"><span className="text-zinc-500">Paket</span><span>{booking.packageName}</span></div>
-              <div className="flex justify-between"><span className="text-zinc-500">Acara</span><span>{booking.eventType}</span></div>
-              <div className="flex justify-between"><span className="text-zinc-500">Tanggal</span><span>{new Date(booking.sessionDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
-              {booking.sessionTime && <div className="flex justify-between"><span className="text-zinc-500">Jam</span><span>{booking.sessionTime} WIB</span></div>}
-            </div>
-            <div className="border-t pt-2 mt-2">
-              <div className="flex justify-between font-bold"><span>Total</span><span className="text-purple-600">{formatCurrency(booking.totalAmount)}</span></div>
-              <div className="flex justify-between text-xs text-zinc-500"><span>DP (30%)</span><span>{formatCurrency(booking.dpAmount)}</span></div>
-            </div>
-            <div className="border-t pt-2 mt-2">
-              <div className="flex justify-between"><span className="text-zinc-500">DP</span><Badge variant={booking.dpPaid ? 'default' : 'secondary'}>{booking.dpPaid ? 'Lunas' : 'Belum'}</Badge></div>
-              <div className="flex justify-between"><span className="text-zinc-500">Pelunasan</span><Badge variant={booking.finalPaid ? 'default' : 'secondary'}>{booking.finalPaid ? 'Lunas' : 'Belum'}</Badge></div>
-            </div>
+            <p className="font-medium">Detail Pesanan</p>
+            <div className="flex justify-between"><span className="text-zinc-500">Paket</span><span>{booking.packageName}</span></div>
+            <div className="flex justify-between"><span className="text-zinc-500">Acara</span><span>{booking.eventType}</span></div>
+            <div className="flex justify-between"><span className="text-zinc-500">Tanggal</span><span>{new Date(booking.sessionDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+            {booking.sessionTime && <div className="flex justify-between"><span className="text-zinc-500">Jam</span><span>{booking.sessionTime} WIB</span></div>}
           </CardContent>
         </Card>
 
@@ -124,17 +189,15 @@ export default function BookingStatusPage() {
         {(booking.driveAllPhotos || booking.driveRawPhotos || booking.driveEditedPhotos) && (
           <Card>
             <CardContent className="p-4 space-y-2 text-sm">
-              <p className="font-medium mb-2">Link Foto</p>
-              {booking.driveAllPhotos && <a href={booking.driveAllPhotos} target="_blank" rel="noopener" className="block text-blue-600 hover:underline">📷 Semua Foto</a>}
-              {booking.driveRawPhotos && <a href={booking.driveRawPhotos} target="_blank" rel="noopener" className="block text-blue-600 hover:underline">🖼️ Foto RAW</a>}
-              {booking.driveEditedPhotos && <a href={booking.driveEditedPhotos} target="_blank" rel="noopener" className="block text-blue-600 hover:underline">✨ Foto Edited</a>}
+              <p className="font-medium">Link Foto</p>
+              {booking.driveAllPhotos && <a href={booking.driveAllPhotos} target="_blank" rel="noopener" className="text-blue-600 hover:underline">📷 Semua Foto</a>}
+              {booking.driveRawPhotos && <a href={booking.driveRawPhotos} target="_blank" rel="noopener" className="text-blue-600 hover:underline">🖼️ Foto RAW</a>}
+              {booking.driveEditedPhotos && <a href={booking.driveEditedPhotos} target="_blank" rel="noopener" className="text-blue-600 hover:underline">✨ Foto Edited</a>}
             </CardContent>
           </Card>
         )}
 
-        <Link href={`/${slug}`}>
-          <Button variant="outline" className="w-full">Kembali ke {slug}</Button>
-        </Link>
+        <Link href={`/${slug}`}><Button variant="outline" className="w-full">Kembali ke {slug}</Button></Link>
       </div>
     </div>
   );
