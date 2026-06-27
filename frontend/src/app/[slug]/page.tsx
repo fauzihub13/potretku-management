@@ -113,7 +113,7 @@ export default function VendorPage() {
       const bookingCode = bookRes.data.bookingCode;
       const bookingId = bookRes.data.bookingId;
 
-      // Step 2: Initiate DOKU payment (jika gagal, booking sudah dihapus di backend)
+      // Step 2: Initiate DOKU payment
       try {
         const payRes = await api.post('/doku/create', { bookingId, slug });
         setBookingResult({
@@ -124,12 +124,15 @@ export default function VendorPage() {
         });
         setStep(4);
         toast.success('Pemesanan berhasil!');
+        // Langsung redirect ke DOKU
+        setTimeout(() => {
+          window.location.href = payRes.data.paymentUrl;
+        }, 1500);
       } catch (payErr: any) {
-        // DOKU gagal, booking sudah dihapus backend
         const errMsg = payErr.response?.data?.error || 'Payment gateway gagal';
         toast.error('Pemesanan gagal: ' + errMsg);
         setBookingResult(null);
-        setStep(3); // Kembali ke ringkasan
+        setStep(3);
       }
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Gagal mengirim pemesanan');
@@ -384,22 +387,17 @@ export default function VendorPage() {
             <p className="text-2xl font-mono font-bold" style={{ color: primaryColor }}>{bookingResult.bookingCode}</p>
             {bookingResult.paymentUrl ? (
               <div className="space-y-3">
-                <p className="text-sm text-zinc-500">Klik tombol di bawah untuk melakukan pembayaran:</p>
-                <Button
-                  size="lg"
-                  onClick={() => window.location.href = `/${slug}/status/${bookingResult.bookingCode}`}
-                  style={{ backgroundColor: primaryColor }}
-                  className="text-white px-8"
-                >
-                  💳 Bayar Sekarang
-                </Button>
+                <p className="text-sm text-zinc-500">Anda akan diarahkan ke halaman pembayaran...</p>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto" />
               </div>
             ) : (
-              <p className="text-sm text-zinc-500">Simpan kode ini untuk melacak status pesanan.</p>
+              <>
+                <p className="text-sm text-zinc-500">Simpan kode ini untuk melacak status pesanan.</p>
+                <Link href={`/${slug}/status/${bookingResult.bookingCode}`}>
+                  <Button variant="outline" className="mt-2">Lihat Status Pesanan</Button>
+                </Link>
+              </>
             )}
-            <Link href={`/${slug}/status/${bookingResult.bookingCode}`}>
-              <Button variant="outline" className="mt-2">Lihat Status Pesanan</Button>
-            </Link>
           </div>
         )}
       </div>

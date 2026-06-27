@@ -146,10 +146,10 @@ router.get('/:slug/track/:code', async (req, res) => {
     const booking = await prisma.booking.findFirst({
       where: { userId: setting.userId, bookingCode: req.params.code },
       select: {
-        bookingCode: true, clientName: true, eventType: true, sessionDate: true,
+        id: true, bookingCode: true, clientName: true, eventType: true, sessionDate: true,
         sessionTime: true, packageName: true, totalAmount: true, dpAmount: true,
         dpPaid: true, finalPaid: true, status: true, notes: true, driveAllPhotos: true,
-        driveRawPhotos: true, driveEditedPhotos: true, createdAt: true
+        driveRawPhotos: true, driveEditedPhotos: true, dokuPaymentUrl: true, createdAt: true
       }
     });
     if (!booking) return res.status(404).json({ error: 'Pemesanan tidak ditemukan' });
