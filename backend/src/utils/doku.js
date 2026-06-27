@@ -96,6 +96,9 @@ async function createPayment(booking, vendorSettings, addons, slug) {
       name: booking.clientName,
       phone: booking.clientPhone || '',
       email: booking.clientEmail || ''
+    },
+    additional_info: {
+      override_notification_url: `${backendUrl}/api/doku/notification`
     }
   };
 
