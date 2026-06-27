@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/lib/utils-helpers';
 import { ViewToggle, Pagination } from '@/components/view-controls';
+import { PageSizeSelector } from '@/components/page-size-selector';
 import { Plus, Trash2, Edit, Package, Clock, Image, MapPin, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -33,8 +34,6 @@ const emptyForm: ServiceForm = {
   category: 'main', eventTypes: [], city: '', additionalCosts: [], isActive: true
 };
 const eventTypeOptions = ['Wedding', 'Pre-wedding', 'Portrait', 'Event', 'Commercial', 'Product'];
-const PAGE_SIZE = 10;
-
 export default function ServicesPage() {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +47,7 @@ export default function ServicesPage() {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchServices = () => {
     setLoading(true);
@@ -61,8 +61,8 @@ export default function ServicesPage() {
     return true;
   });
   const { sorted, sortField, sortDir, requestSort } = useSortableData(filtered, 'sortOrder', 'asc');
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const openCreate = () => { setForm(emptyForm); setEditId(null); setFormErrors({}); setDialog(true); };
   const openEdit = (s: any) => {
@@ -266,7 +266,10 @@ export default function ServicesPage() {
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <div className="flex items-center justify-between">
+        <PageSizeSelector value={pageSize} onChange={(v) => { setPageSize(v); setPage(1); }} />
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      </div>
 
       {/* Dialog Form */}
       <Dialog open={dialog} onOpenChange={setDialog}>

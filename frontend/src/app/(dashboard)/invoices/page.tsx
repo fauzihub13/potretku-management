@@ -11,12 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ViewToggle, Pagination } from '@/components/view-controls';
+import { PageSizeSelector } from '@/components/page-size-selector';
 import { Plus, Trash2, Edit, FileText, Copy, Download, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { SortableTh, useSortableData } from '@/components/sortable-table';
-
-const PAGE_SIZE = 10;
 
 export default function InvoicesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -29,6 +28,7 @@ export default function InvoicesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     Promise.all([api.get('/templates?type=whatsapp'), api.get('/bookings?limit=50')]).then(([t, b]) => {
@@ -39,8 +39,8 @@ export default function InvoicesPage() {
 
   const filteredBookings = bookings.filter(b => !search || b.clientName.toLowerCase().includes(search.toLowerCase()) || b.bookingCode.toLowerCase().includes(search.toLowerCase()));
   const { sorted: sortedBookings, sortField, sortDir, requestSort } = useSortableData(filteredBookings, 'createdAt', 'desc');
-  const totalPages = Math.ceil(sortedBookings.length / PAGE_SIZE);
-  const paged = sortedBookings.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(sortedBookings.length / pageSize);
+  const paged = sortedBookings.slice((page - 1) * pageSize, page * pageSize);
 
   const openCreate = () => { setForm({ name: '', type: 'whatsapp', content: '', variables: '' }); setEditId(null); setDialog(true); };
   const openEdit = (t: any) => { setForm({ name: t.name, type: t.type, content: t.content, variables: t.variables || '' }); setEditId(t.id); setDialog(true); };
@@ -215,7 +215,8 @@ export default function InvoicesPage() {
           </div>
         )}
 
-        <div className="mt-4">
+        <div className="mt-4 flex items-center justify-between">
+          <PageSizeSelector value={pageSize} onChange={(v) => { setPageSize(v); setPage(1); }} />
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </div>

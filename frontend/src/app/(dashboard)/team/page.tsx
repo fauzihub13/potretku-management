@@ -10,13 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { ViewToggle, Pagination } from '@/components/view-controls';
+import { PageSizeSelector } from '@/components/page-size-selector';
 import { Users, Phone, Mail, Trash2, Edit, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { validateName, validatePhone, validateEmail } from '@/lib/validations';
 import { SortableTh, useSortableData } from '@/components/sortable-table';
-
-const PAGE_SIZE = 12;
 
 export default function TeamPage() {
   const [members, setMembers] = useState<any[]>([]);
@@ -29,6 +28,7 @@ export default function TeamPage() {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [pageSize, setPageSize] = useState(12);
 
   const fetchMembers = () => {
     setLoading(true);
@@ -38,8 +38,8 @@ export default function TeamPage() {
 
   const filtered = members.filter(m => !search || m.name.toLowerCase().includes(search.toLowerCase()) || m.role.toLowerCase().includes(search.toLowerCase()));
   const { sorted, sortField, sortDir, requestSort } = useSortableData(filtered, 'name', 'asc');
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const paged = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const openCreate = () => { setForm({ name: '', role: '', email: '', phone: '', tags: '[]', isActive: true }); setEditId(null); setFormErrors({}); setDialog(true); };
   const openEdit = (m: any) => { setForm({ name: m.name, role: m.role, email: m.email || '', phone: m.phone || '', tags: m.tags || '[]', isActive: m.isActive }); setEditId(m.id); setFormErrors({}); setDialog(true); };
@@ -177,7 +177,10 @@ export default function TeamPage() {
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <div className="flex items-center justify-between">
+        <PageSizeSelector value={pageSize} onChange={(v) => { setPageSize(v); setPage(1); }} />
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      </div>
 
       <Dialog open={dialog} onOpenChange={setDialog}>
         <DialogContent className="max-w-md">

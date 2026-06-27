@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency, statusColors, statusLabels } from '@/lib/utils-helpers';
 import { ViewToggle, Pagination } from '@/components/view-controls';
+import { PageSizeSelector } from '@/components/page-size-selector';
 import { Plus, Search, Trash2, Eye, Edit, Calendar, Clock, MapPin, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog, ConfirmActionDialog } from '@/components/confirm-dialog';
@@ -21,13 +22,14 @@ export default function BookingsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   const [view, setView] = useState<'table' | 'card'>('table');
   const router = useRouter();
 
   const fetchBookings = () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: '12' });
+    const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
     if (search) params.set('search', search);
     if (status && status !== 'all') params.set('status', status);
     api.get(`/bookings?${params}`).then(res => {
@@ -36,7 +38,7 @@ export default function BookingsPage() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchBookings(); }, [page, status]);
+  useEffect(() => { fetchBookings(); }, [page, status, pageSize]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,7 +243,10 @@ export default function BookingsPage() {
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      <div className="flex items-center justify-between">
+        <PageSizeSelector value={pageSize} onChange={(v) => { setPageSize(v); setPage(1); }} />
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      </div>
 
       <ConfirmDialog
         open={!!deleteId}
