@@ -77,9 +77,9 @@ async function createPayment(booking, vendorSettings, addons, slug, amount, paym
     auto_redirect: true
   };
 
-  // Line items hanya dikirim jika amount = total (bayar lunas atau sisa)
-  // Jika bayar DP, jangan kiri line_items karena amount tidak match
-  if (paymentType !== 'dp') {
+  // Line items hanya dikirim jika bayar LUNAS (amount = total penuh)
+  // DP dan sisa tidak pakai line_items karena amount tidak match
+  if (paymentType === 'full') {
     orderObj.line_items = lineItems;
   }
 
