@@ -57,7 +57,7 @@ router.post('/notification', async (req, res) => {
     const booking = await prisma.booking.findFirst({ where: { dokuInvoiceNo: invoiceNumber } });
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-    const dokuStatus = notification.order?.status || notification.payment?.status || notification.status;
+    const dokuStatus = notification.transaction?.status || notification.order?.status || notification.payment?.status || notification.status;
     console.log('[DOKU] DOKU status:', dokuStatus, 'for booking:', booking.bookingCode);
 
     let newStatus = 'pending';

@@ -80,16 +80,16 @@ async function createPayment(booking, vendorSettings, addons, slug) {
     },
     payment: {
       payment_due_date: 60,
-      // payment_method_types: [
-      //   'VIRTUAL_ACCOUNT_BCA',
-      //   'VIRTUAL_ACCOUNT_BANK_MANDIRI',
-      //   'VIRTUAL_ACCOUNT_BRI',
-      //   'VIRTUAL_ACCOUNT_BNI',
-      //   'QRIS',
+      payment_method_types: [
+        'VIRTUAL_ACCOUNT_BCA',
+        'VIRTUAL_ACCOUNT_BANK_MANDIRI',
+        'VIRTUAL_ACCOUNT_BRI',
+        'VIRTUAL_ACCOUNT_BNI',
+        // 'QRIS',
       //   'EMONEY_SHOPEEPAY',
       //   'EMONEY_DANA',
       //   'CREDIT_CARD'
-      // ]
+      ]
     },
     customer: {
       id: booking.bookingCode,
