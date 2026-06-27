@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency, formatDate, statusColors, statusLabels } from '@/lib/utils-helpers';
+import { formatCurrency, formatDate, formatDateTime, statusColors, statusLabels } from '@/lib/utils-helpers';
 import { ArrowLeft, Edit, CheckCircle, Clock, ArrowRight, FileText, MessageCircle, CalendarDays, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -203,9 +203,7 @@ export default function BookingDetailPage() {
             <div className="flex justify-between pt-2 border-t mt-2">
               <span className="text-zinc-500">Dibuat</span>
               <span className="text-xs">
-                {new Date(booking.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
-                {' '}
-                {new Date(booking.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                {formatDateTime(booking.createdAt)} WIB
               </span>
             </div>
           </CardContent>

@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@/lib/utils-helpers';
+import { formatCurrency, formatDate } from '@/lib/utils-helpers';
 import { CheckCircle, Clock, XCircle, CreditCard, ArrowLeft, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -180,7 +180,7 @@ export default function BookingStatusPage() {
             <p className="font-medium">Detail Pesanan</p>
             <div className="flex justify-between"><span className="text-zinc-500">Paket</span><span>{booking.packageName}</span></div>
             <div className="flex justify-between"><span className="text-zinc-500">Acara</span><span>{booking.eventType}</span></div>
-            <div className="flex justify-between"><span className="text-zinc-500">Tanggal</span><span>{new Date(booking.sessionDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+            <div className="flex justify-between"><span className="text-zinc-500">Tanggal</span><span>{formatDate(booking.sessionDate)}</span></div>
             {booking.sessionTime && <div className="flex justify-between"><span className="text-zinc-500">Jam</span><span>{booking.sessionTime} WIB</span></div>}
           </CardContent>
         </Card>

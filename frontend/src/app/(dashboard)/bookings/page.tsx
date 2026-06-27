@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatCurrency, statusColors, statusLabels } from '@/lib/utils-helpers';
+import { formatCurrency, formatDate, formatDateTime, statusColors, statusLabels } from '@/lib/utils-helpers';
 import { ViewToggle, Pagination } from '@/components/view-controls';
 import { PageSizeSelector } from '@/components/page-size-selector';
 import { Plus, Search, Trash2, Eye, Edit, Calendar, Clock, MapPin, Download, RefreshCw } from 'lucide-react';
@@ -176,14 +176,12 @@ export default function BookingsPage() {
                       <td className="p-3">{b.eventType}</td>
                       <td className="p-3 text-sm">
                         <div>
-                          <p>{new Date(b.sessionDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                          <p>{formatDate(b.sessionDate)}</p>
                           {b.sessionTime && <p className="text-xs text-zinc-500 font-mono">{b.sessionTime} WIB</p>}
                         </div>
                       </td>
                       <td className="p-3 text-xs text-zinc-500">
-                        {new Date(b.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        <br />
-                        <span className="font-mono">{new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                        {formatDateTime(b.createdAt)}
                       </td>
                       <td className="p-3">{b.packageName}</td>
                       <td className="p-3 font-medium">{formatCurrency(b.totalAmount)}</td>
@@ -222,10 +220,10 @@ export default function BookingsPage() {
                   <Badge className={statusColors[b.status]}>{statusLabels[b.status]}</Badge>
                 </div>
                 <div className="space-y-1.5 text-xs text-zinc-500">
-                  <div className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {new Date(b.sessionDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                  <div className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {formatDate(b.sessionDate)}</div>
                   {b.sessionTime && <div className="flex items-center gap-1.5"><Clock className="h-3 w-3" /> {b.sessionTime} WIB</div>}
                   {b.location && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {b.location}</div>}
-                  <p className="text-zinc-400">Dibuat: {new Date(b.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} {new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-zinc-400">Dibuat: {formatDateTime(b.createdAt)}</p>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <div>

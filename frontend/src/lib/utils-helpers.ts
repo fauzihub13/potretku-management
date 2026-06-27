@@ -6,22 +6,21 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+// Deterministic date format - no timezone dependency
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const d = new Date(date);
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
+// Deterministic datetime format
 export function formatDateTime(date: string | Date): string {
-  return new Date(date).toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const d = new Date(date);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const h = String(d.getUTCHours()).padStart(2, '0');
+  const m = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${day} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()} ${h}:${m}`;
 }
 
 export function cn(...classes: (string | undefined | null | false)[]): string {
