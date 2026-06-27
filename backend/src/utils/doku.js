@@ -66,18 +66,25 @@ async function createPayment(booking, vendorSettings, addons, slug, amount, paym
     });
   });
 
+  const orderObj = {
+    amount: paymentAmount,
+    invoice_number: invoiceNumber,
+    currency: 'IDR',
+    callback_url: callbackUrl,
+    callback_url_result: callbackUrl,
+    callback_url_cancel: `${frontendUrl}/${slug}/status/${booking.bookingCode}`,
+    language: 'ID',
+    auto_redirect: true
+  };
+
+  // Line items hanya dikirim jika amount = total (bayar lunas atau sisa)
+  // Jika bayar DP, jangan kiri line_items karena amount tidak match
+  if (paymentType !== 'dp') {
+    orderObj.line_items = lineItems;
+  }
+
   const body = {
-    order: {
-      amount: paymentAmount,
-      invoice_number: invoiceNumber,
-      currency: 'IDR',
-      callback_url: callbackUrl,
-      callback_url_result: callbackUrl,
-      callback_url_cancel: `${frontendUrl}/${slug}/status/${booking.bookingCode}`,
-      language: 'ID',
-      auto_redirect: true,
-      line_items: lineItems
-    },
+    order: orderObj,
     payment: {
       payment_due_date: 60,
       payment_method_types: [
