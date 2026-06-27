@@ -271,19 +271,26 @@ export default function BookingDetailPage() {
 
         <Card>
           <CardHeader><CardTitle className="text-base">Kelola Status</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-3">
+            <p className="text-xs text-zinc-500">Status "Menunggu Pembayaran" dan "Sudah Dibayar" dikelola otomatis oleh payment gateway.</p>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <Button
-                  key={key}
-                  variant={booking.status === key ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => updateStatus(key)}
-                  className={booking.status === key ? 'bg-purple-600 hover:bg-purple-700' : ''}
-                >
-                  {label}
-                </Button>
-              ))}
+              <Button
+                variant={booking.status === 'cancelled' ? 'destructive' : 'outline'}
+                size="sm"
+                onClick={() => updateStatus('cancelled')}
+                disabled={booking.status === 'cancelled'}
+              >
+                {booking.status === 'cancelled' ? 'Dibatalkan ✓' : 'Dibatalkan'}
+              </Button>
+              <Button
+                variant={booking.status === 'completed' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => updateStatus('completed')}
+                disabled={booking.status === 'completed'}
+                className={booking.status === 'completed' ? 'bg-green-600 hover:bg-green-700' : ''}
+              >
+                {booking.status === 'completed' ? 'Selesai ✓' : 'Selesai'}
+              </Button>
             </div>
           </CardContent>
         </Card>

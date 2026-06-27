@@ -90,6 +90,12 @@ export default function BookingStatusPage() {
             {paying ? 'Mengarahkan ke pembayaran...' : 'Bayar Sekarang'}
           </Button>
         )}
+        {booking.status === 'cancelled' && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 text-center">
+            <p className="text-sm text-red-600 font-medium">Pesanan ini telah dibatalkan oleh vendor.</p>
+            <p className="text-xs text-red-500 mt-1">Silakan hubungi vendor untuk informasi lebih lanjut.</p>
+          </div>
+        )}
 
         {/* Booking Details */}
         <Card>
