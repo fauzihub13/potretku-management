@@ -308,7 +308,14 @@ export default function TeamPaymentsPage() {
             <div className="space-y-2">
               <Label>Anggota *</Label>
               <Select value={form.teamMemberId} onValueChange={(v) => { setForm(f => ({ ...f, teamMemberId: v || '' })); if (formErrors.teamMemberId) setFormErrors(prev => { const { teamMemberId: _, ...rest } = prev; return rest; }); }}>
-                <SelectTrigger><SelectValue placeholder="Pilih anggota" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih anggota">
+                    {form.teamMemberId && (() => {
+                      const t = team.find(x => x.id === form.teamMemberId);
+                      return t ? `${t.name} (${t.role})` : null;
+                    })()}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {team.filter(t => t.isActive).map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.role})</SelectItem>)}
                 </SelectContent>
@@ -318,7 +325,14 @@ export default function TeamPaymentsPage() {
             <div className="space-y-2">
               <Label>Booking (opsional)</Label>
               <Select value={form.bookingId} onValueChange={(v) => setForm(f => ({ ...f, bookingId: v || '' }))}>
-                <SelectTrigger><SelectValue placeholder="Pilih booking" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih booking">
+                    {form.bookingId && (() => {
+                      const b = bookings.find(x => x.id === form.bookingId);
+                      return b ? `${b.bookingCode} - ${b.clientName}` : null;
+                    })()}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {bookings.map(b => <SelectItem key={b.id} value={b.id}>{b.bookingCode} - {b.clientName}</SelectItem>)}
                 </SelectContent>
