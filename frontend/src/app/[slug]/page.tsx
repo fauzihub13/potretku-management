@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils-helpers';
-import { MapPin, Phone, Mail, ArrowLeft, ArrowRight, Check, Package, Clock, Camera } from 'lucide-react';
+import { MapPin, Phone, Mail, ArrowLeft, ArrowRight, Check, Package, Clock, Camera, Plus, Minus } from 'lucide-react';
 
 const timeSlots = Array.from({ length: 48 }, (_, i) => {
   const h = Math.floor(i / 2);
@@ -32,7 +32,7 @@ export default function VendorPage() {
 
   // Form state
   const [selectedService, setSelectedService] = useState('');
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedAddons, setSelectedAddons] = useState<{id: string; name: string; price: number; quantity: number}[]>([]);
   const [form, setForm] = useState({
     clientName: '', clientPhone: '', clientEmail: '',
     eventType: '', sessionDate: '', sessionTime: '', notes: '',
@@ -53,12 +53,24 @@ export default function VendorPage() {
   }, [slug]);
 
   const selected = services.find(s => s.id === selectedService);
-  const totalAddons = addons.filter(a => selectedAddons.includes(a.id)).reduce((s, a) => s + a.price, 0);
+  const totalAddons = selectedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
   const totalAmount = (selected?.price || 0) + totalAddons;
   const dpAmount = Math.round(totalAmount * 0.3);
 
-  const toggleAddon = (id: string) => {
-    setSelectedAddons(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
+  const toggleAddon = (addon: any) => {
+    setSelectedAddons(prev => {
+      const existing = prev.find(a => a.id === addon.id);
+      if (existing) return prev.filter(a => a.id !== addon.id);
+      return [...prev, { id: addon.id, name: addon.name, price: addon.price, quantity: 1 }];
+    });
+  };
+
+  const updateAddonQty = (id: string, delta: number) => {
+    setSelectedAddons(prev => prev.map(a => a.id === id ? { ...a, quantity: Math.max(1, a.quantity + delta) } : a));
+  };
+
+  const updateAddonQtyInput = (id: string, qty: number) => {
+    setSelectedAddons(prev => prev.map(a => a.id === id ? { ...a, quantity: Math.max(1, qty) } : a));
   };
 
   const handleSubmit = async () => {
@@ -67,7 +79,7 @@ export default function VendorPage() {
       const res = await api.post(`/vendor/${slug}/book`, {
         ...form,
         serviceId: selectedService,
-        addons: selectedAddons
+        addons: selectedAddons.map(a => a.id)
       });
       setBookingResult(res.data);
       setStep(4);
@@ -161,20 +173,27 @@ export default function VendorPage() {
               <div className="mt-6">
                 <h3 className="text-sm font-medium text-zinc-500 mb-2">Tambahan (opsional)</h3>
                 <div className="space-y-2">
-                  {addons.map(a => (
-                    <div key={a.id} onClick={() => toggleAddon(a.id)}
-                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${selectedAddons.includes(a.id) ? 'border-current' : 'border-zinc-200'}`}
-                      style={selectedAddons.includes(a.id) ? { borderColor: primaryColor, backgroundColor: primaryColor + '08' } : {}}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedAddons.includes(a.id) ? 'text-white' : ''}`}
-                          style={selectedAddons.includes(a.id) ? { backgroundColor: primaryColor } : {}}>
-                          {selectedAddons.includes(a.id) && <Check className="h-3 w-3" />}
+                  {addons.map(a => {
+                    const selected = selectedAddons.find(sa => sa.id === a.id);
+                    return (
+                      <div key={a.id} className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${selected ? 'border-current' : 'border-zinc-200'}`}
+                        style={selected ? { borderColor: primaryColor, backgroundColor: primaryColor + '08' } : {}}>
+                        <div className="flex-1 min-w-0" onClick={() => toggleAddon(a)}>
+                          <p className="text-sm font-medium">{a.name}</p>
+                          <p className="text-xs text-zinc-500">{formatCurrency(a.price)}</p>
                         </div>
-                        <span className="text-sm">{a.name}</span>
+                        {selected ? (
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => updateAddonQty(a.id, -1)} className="w-7 h-7 rounded border flex items-center justify-center text-zinc-600 hover:bg-zinc-100"><Minus className="h-3 w-3" /></button>
+                            <input type="number" value={selected.quantity} onChange={e => updateAddonQtyInput(a.id, Number(e.target.value))} className="w-12 h-7 text-center text-sm border rounded font-medium" min={1} />
+                            <button type="button" onClick={() => updateAddonQty(a.id, 1)} className="w-7 h-7 rounded border flex items-center justify-center text-zinc-600 hover:bg-zinc-100"><Plus className="h-3 w-3" /></button>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => toggleAddon(a)} className="w-8 h-8 rounded border flex items-center justify-center text-zinc-400 hover:bg-zinc-100"><Plus className="h-4 w-4" /></button>
+                        )}
                       </div>
-                      <span className="text-sm font-medium">{formatCurrency(a.price)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -251,8 +270,8 @@ export default function VendorPage() {
                 <div className="border-t pt-2 mt-2">
                   <div className="flex justify-between"><span className="text-zinc-500">Paket</span><span className="font-medium">{selected?.name}</span></div>
                   <div className="flex justify-between"><span className="text-zinc-500">Harga paket</span><span>{formatCurrency(selected?.price || 0)}</span></div>
-                  {selectedAddons.length > 0 && addons.filter(a => selectedAddons.includes(a.id)).map(a => (
-                    <div key={a.id} className="flex justify-between"><span className="text-zinc-500">+ {a.name}</span><span>{formatCurrency(a.price)}</span></div>
+                  {selectedAddons.length > 0 && selectedAddons.map(a => (
+                    <div key={a.id} className="flex justify-between"><span className="text-zinc-500">+ {a.name} ×{a.quantity}</span><span>{formatCurrency(a.price * a.quantity)}</span></div>
                   ))}
                 </div>
                 <div className="border-t pt-2 mt-2">
