@@ -1,8 +1,8 @@
+import { AuthProvider } from "@/lib/auth-context";
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
-import "./globals.css";
 import { Toaster } from "sonner";
-import { AuthProvider } from "@/lib/auth-context";
+import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -33,7 +33,10 @@ export default function RootLayout({
       className={`${inter.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 font-sans">
+      <body
+        className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 font-sans"
+        suppressHydrationWarning
+      >
         <AuthProvider>
           {children}
           <Toaster position="top-right" richColors />

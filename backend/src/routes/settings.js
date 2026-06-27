@@ -28,7 +28,12 @@ router.get('/', auth, async (req, res) => {
         vendorCustomFields: '[]'
       }});
     }
-    res.json(settings);
+    // Include user data for studio name etc
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { name: true, studioName: true, studioAddress: true, studioPhone: true, studioLogo: true, email: true }
+    });
+    res.json({ ...settings, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
