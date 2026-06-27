@@ -25,22 +25,15 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
+
+// Bypass ngrok browser warning
+app.use((req, res, next) => {
+  res.setHeader('ngrok-skip-browser-warning', 'true');
+  next();
+});
+
 app.use(cors({
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.CORS_ORIGIN || 'http://localhost:3000',
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ];
-    // Allow requests with no origin (mobile apps, curl, etc)
-    if (!origin) return callback(null, true);
-    // Allow ngrok URLs
-    if (origin.includes('.ngrok-free.app') || origin.includes('.ngrok.io')) return callback(null, true);
-    // Allow any localhost
-    if (origin.startsWith('http://localhost')) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(null, true); // Allow all in development
-  },
+  origin: true,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
