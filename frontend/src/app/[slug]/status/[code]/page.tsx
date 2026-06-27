@@ -7,8 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils-helpers';
-import { CheckCircle, Clock, XCircle, CreditCard, ArrowLeft, Package, Calendar, Phone, Mail } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, CreditCard, ArrowLeft, Package, Calendar, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   pending: { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/30', label: 'Menunggu Pembayaran' },
@@ -24,13 +25,28 @@ export default function BookingStatusPage() {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paying, setPaying] = useState(false);
 
-  useEffect(() => {
+  const fetchBooking = () => {
     api.get(`/vendor/${slug}/track/${code}`)
       .then(res => setBooking(res.data))
       .catch(err => setError(err.response?.data?.error || 'Pemesanan tidak ditemukan'))
       .finally(() => setLoading(false));
-  }, [slug, code]);
+  };
+
+  useEffect(() => { fetchBooking(); }, [slug, code]);
+
+  const handlePay = async () => {
+    setPaying(true);
+    try {
+      const res = await api.post('/doku/create', { bookingId: booking.id, slug });
+      // Redirect to DOKU payment page
+      window.location.href = res.data.paymentUrl;
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Gagal membuat pembayaran');
+      setPaying(false);
+    }
+  };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" /></div>;
   if (error) return <div className="min-h-screen flex items-center justify-center p-4"><Card className="w-full max-w-md"><CardContent className="p-8 text-center"><p className="text-zinc-500">{error}</p><Link href={`/${slug}`}><Button variant="outline" className="mt-4">Kembali</Button></Link></CardContent></Card></div>;
@@ -38,7 +54,7 @@ export default function BookingStatusPage() {
 
   const st = statusConfig[booking.status] || statusConfig.pending;
   const StatusIcon = st.icon;
-  const canPay = booking.status === 'pending' && !booking.dpPaid;
+  const canPay = booking.status === 'pending';
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -62,14 +78,16 @@ export default function BookingStatusPage() {
           <p className="text-sm text-zinc-500 mt-1">Kode: <span className="font-mono font-bold">{booking.bookingCode}</span></p>
         </div>
 
-        {/* Pay Button */}
-        {canPay && booking.dokuPaymentUrl && (
+        {/* Pay Button — tampil jika status pending */}
+        {canPay && (
           <Button
             className="w-full bg-purple-600 hover:bg-purple-700"
             size="lg"
-            onClick={() => window.location.href = booking.dokuPaymentUrl}
+            onClick={handlePay}
+            disabled={paying}
           >
-            <CreditCard className="h-5 w-5 mr-2" /> Bayar Sekarang
+            <CreditCard className="h-5 w-5 mr-2" />
+            {paying ? 'Mengarahkan ke pembayaran...' : 'Bayar Sekarang'}
           </Button>
         )}
 
