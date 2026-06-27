@@ -538,15 +538,17 @@ router.get("/:id/invoice", auth, async (req, res) => {
       .stroke(purple);
     rowY += 8;
 
-    // FIX LOGIKA: Sisa bayar hanya dikurangi nominal DP jika status DP sudah lunas (dpPaid === true)
-    const remaining = booking.dpPaid
-      ? booking.totalAmount - booking.dpAmount
-      : booking.totalAmount;
+    // FIX LOGIKA: Sisa bayar
+    const remaining = booking.finalPaid
+      ? 0
+      : booking.dpPaid
+        ? booking.totalAmount - booking.dpAmount
+        : booking.totalAmount;
 
     doc
       .fontSize(11)
       .font("Helvetica-Bold")
-      .fillColor(purple)
+      .fillColor(remaining === 0 ? "#22c55e" : purple)
       .text("SISA BAYAR", totX, rowY, { width: totLabelW });
     doc.text(formatRp(remaining), totValX, rowY, {
       width: totValW,
@@ -615,6 +617,18 @@ router.get("/:id/invoice", auth, async (req, res) => {
         rowY,
         { width: contentW, align: "center" },
       );
+
+    // === 8. STAMP LUNAS (overlay jika sudah lunas semua) ===
+    if (booking.dpPaid && booking.finalPaid) {
+      doc.save();
+      doc.translate(297.64, 420);
+      doc.rotate(-15);
+      doc.fontSize(60).font("Helvetica-Bold").fillColor("rgba(34, 197, 94, 0.15)");
+      doc.text("LUNAS", -100, -20, { width: 200, align: "center" });
+      doc.rotate(15);
+      doc.translate(-297.64, -420);
+      doc.restore();
+    }
 
     doc.end();
   } catch (err) {
