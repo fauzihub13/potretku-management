@@ -29,8 +29,8 @@ function generateSignature(clientSecret, clientId, requestId, timestamp, endpoin
 }
 
 function hashBody(body) {
-  const minified = JSON.stringify(body).replace(/\s+/g, '');
-  return crypto.createHash('sha256').update(minified).digest('base64');
+  const bodyStr = JSON.stringify(body);
+  return crypto.createHash('sha256').update(bodyStr).digest('base64');
 }
 
 async function createPayment(booking, vendorSettings, addons) {
@@ -109,7 +109,9 @@ async function createPayment(booking, vendorSettings, addons) {
   console.log('  Client-Id:', clientId);
   console.log('  Request-Id:', requestId);
   console.log('  Request-Timestamp:', timestamp);
+  console.log('  Body Hash:', bodyHash);
   console.log('  Signature:', signature);
+  console.log('[DOKU] Body:', JSON.stringify(body));
 
   const response = await fetch(url, {
     method: 'POST',
