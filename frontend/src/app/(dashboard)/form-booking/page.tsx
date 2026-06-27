@@ -106,9 +106,13 @@ export default function FormBookingPage() {
             <span className="text-sm text-zinc-500">potretku.com/</span>
             <Input
               value={settings?.vendorSlug || ''}
-              onChange={e => { update('vendorSlug', e.target.value); checkSlug(e.target.value); }}
-              placeholder="nama-vendor"
-              className="flex-1 max-w-xs"
+              onChange={e => {
+                const val = e.target.value.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9-_]/g, '');
+                update('vendorSlug', val);
+                checkSlug(val);
+              }}
+              placeholder="namavendor"
+              className="flex-1 max-w-xs lowercase"
             />
             {slugAvailable === true && <span className="text-xs text-green-600">✓ Tersedia</span>}
             {slugAvailable === false && <span className="text-xs text-red-600">✗ Sudah dipakai</span>}
@@ -157,28 +161,6 @@ export default function FormBookingPage() {
                 </label>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Banner</Label>
-              <div className="space-y-2">
-                {settings?.vendorBanner && <img src={settings.vendorBanner} alt="Banner" className="h-16 w-full rounded-lg object-cover border" />}
-                <label>
-                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const fd = new FormData();
-                    fd.append('file', file);
-                    try {
-                      const res = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-                      update('vendorBanner', res.data.url);
-                      toast.success('Banner diunggah');
-                    } catch { toast.error('Gagal upload'); }
-                  }} />
-                  <span className="flex items-center justify-center gap-2 p-2 border-2 border-dashed rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 text-sm text-zinc-500">
-                    🖼️ {settings?.vendorBanner ? 'Ganti Banner' : 'Pilih Banner'}
-                  </span>
-                </label>
-              </div>
-            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -197,15 +179,12 @@ export default function FormBookingPage() {
             </div>
           </div>
           {/* Color Preview */}
-          <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: settings?.vendorPrimaryColor || '#7c3aed' }}>
-            {settings?.vendorBanner && <img src={settings.vendorBanner} alt="Banner" className="w-full h-24 object-cover" />}
-            <div className="p-4">
-              <div className="flex items-center gap-3">
-                {settings?.vendorLogo && <img src={settings.vendorLogo} alt="Logo" className="h-10 w-10 rounded-full object-cover border border-white/30" />}
-                <div>
-                  <p className="text-white font-bold">{settings?.user?.studioName || 'Studio Name'}</p>
-                  <p className="text-white/80 text-sm">{settings?.vendorTagline || 'Tagline'}</p>
-                </div>
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: settings?.vendorPrimaryColor || '#7c3aed' }}>
+            <div className="flex items-center gap-3">
+              {settings?.vendorLogo && <img src={settings.vendorLogo} alt="Logo" className="h-10 w-10 rounded-full object-cover border border-white/30" />}
+              <div>
+                <p className="text-white font-bold">{settings?.user?.studioName || 'Studio Name'}</p>
+                <p className="text-white/80 text-sm">{settings?.vendorTagline || 'Tagline'}</p>
               </div>
             </div>
           </div>

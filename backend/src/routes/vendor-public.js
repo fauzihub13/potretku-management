@@ -60,7 +60,10 @@ router.get('/:slug', async (req, res) => {
 
 router.post('/:slug/book', async (req, res) => {
   try {
-    const setting = await prisma.setting.findUnique({ where: { vendorSlug: req.params.slug } });
+    const slug = req.params.slug.toLowerCase().replace(/\s+/g, '');
+    if (!/^[a-z0-9\-_]+$/.test(slug)) return res.status(400).json({ error: 'URL vendor tidak valid' });
+    
+    const setting = await prisma.setting.findUnique({ where: { vendorSlug: slug } });
     if (!setting) return res.status(404).json({ error: 'Vendor tidak ditemukan' });
 
     const { z } = require('zod');
@@ -129,7 +132,8 @@ router.post('/:slug/book', async (req, res) => {
 
 router.get('/:slug/track/:code', async (req, res) => {
   try {
-    const setting = await prisma.setting.findUnique({ where: { vendorSlug: req.params.slug } });
+    const slug = req.params.slug.toLowerCase().replace(/\s+/g, '');
+    const setting = await prisma.setting.findUnique({ where: { vendorSlug: slug } });
     if (!setting) return res.status(404).json({ error: 'Vendor tidak ditemukan' });
 
     const booking = await prisma.booking.findFirst({
