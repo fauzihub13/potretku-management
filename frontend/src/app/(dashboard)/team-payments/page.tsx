@@ -61,6 +61,13 @@ export default function TeamPaymentsPage() {
     if (!form.teamMemberId) newErrors.teamMemberId = 'Pilih anggota tim';
     const amountErr = validateNumber(form.amount, 'Jumlah', 1);
     if (amountErr) newErrors.amount = amountErr;
+    // Validasi jumlah tidak melebihi harga pesanan
+    if (form.bookingId && form.amount > 0) {
+      const selectedBooking = bookings.find(b => b.id === form.bookingId);
+      if (selectedBooking && form.amount > selectedBooking.totalAmount) {
+        newErrors.amount = `Jumlah maksimal ${formatCurrency(selectedBooking.totalAmount)}`;
+      }
+    }
     setFormErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
     try {
@@ -326,7 +333,7 @@ export default function TeamPaymentsPage() {
               <Label>Booking (opsional)</Label>
               <Select value={form.bookingId} onValueChange={(v) => setForm(f => ({ ...f, bookingId: v || '' }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih booking">
+                  <SelectValue placeholder={form.teamMemberId ? "Pilih booking" : "Pilih anggota dulu"}>
                     {form.bookingId && (() => {
                       const b = bookings.find(x => x.id === form.bookingId);
                       return b ? `${b.bookingCode} - ${b.clientName}` : null;
@@ -334,9 +341,24 @@ export default function TeamPaymentsPage() {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {bookings.map(b => <SelectItem key={b.id} value={b.id}>{b.bookingCode} - {b.clientName}</SelectItem>)}
+                  {form.teamMemberId ? (
+                    bookings.filter(b => b.freelancerId === form.teamMemberId).length > 0 ? (
+                      bookings.filter(b => b.freelancerId === form.teamMemberId).map(b => (
+                        <SelectItem key={b.id} value={b.id}>{b.bookingCode} - {b.clientName} ({formatCurrency(b.totalAmount)})</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>Tidak ada pesanan untuk anggota ini</SelectItem>
+                    )
+                  ) : (
+                    <SelectItem value="none" disabled>Pilih anggota terlebih dahulu</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Jumlah (Rp) *</Label>
+              <Input type="number" value={form.amount || ''} onChange={e => { setForm(f => ({ ...f, amount: Number(e.target.value) })); if (formErrors.amount) setFormErrors(prev => { const { amount: _, ...rest } = prev; return rest; }); }} placeholder={form.bookingId ? `Maks ${formatCurrency(bookings.find(b => b.id === form.bookingId)?.totalAmount || 0)}` : 'Masukkan jumlah'} />
+              {formErrors.amount && <p className="text-xs text-red-500">{formErrors.amount}</p>}
             </div>
             <div className="space-y-2">
               <Label>Jumlah (Rp) *</Label>

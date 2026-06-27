@@ -3,6 +3,8 @@ const { z } = require('zod');
 const prisma = require('../config/db');
 const auth = require('../middleware/auth');
 
+const formatRp = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
+
 router.get('/', auth, async (req, res) => {
   try {
     const { teamMemberId, status } = req.query;
@@ -56,10 +58,22 @@ router.post('/', auth, async (req, res) => {
     const schema = z.object({
       teamMemberId: z.string().min(1),
       bookingId: z.string().optional(),
-      amount: z.number().min(0),
+      amount: z.number().min(1, 'Jumlah minimal Rp1'),
       description: z.string().optional()
     });
     const data = schema.parse(req.body);
+
+    // Validasi jumlah tidak melebihi harga pesanan
+    if (data.bookingId && data.amount > 0) {
+      const booking = await prisma.booking.findFirst({
+        where: { id: data.bookingId, userId: req.userId }
+      });
+      if (!booking) return res.status(404).json({ error: 'Pesanan tidak ditemukan' });
+      if (data.amount > booking.totalAmount) {
+        return res.status(400).json({ error: `Jumlah maksimal ${formatRp(booking.totalAmount)}` });
+      }
+    }
+
     const payment = await prisma.teamPayment.create({
       data: { ...data, userId: req.userId },
       include: { teamMember: true, booking: true }
