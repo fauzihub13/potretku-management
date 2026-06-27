@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -383,23 +384,22 @@ export default function VendorPage() {
             <p className="text-2xl font-mono font-bold" style={{ color: primaryColor }}>{bookingResult.bookingCode}</p>
             {bookingResult.paymentUrl ? (
               <div className="space-y-3">
-                <p className="text-sm text-zinc-500">Klik tombol di bawah untuk melakukan pembayaran DP (30%):</p>
+                <p className="text-sm text-zinc-500">Klik tombol di bawah untuk melakukan pembayaran:</p>
                 <Button
                   size="lg"
-                  onClick={() => window.location.href = bookingResult.paymentUrl}
+                  onClick={() => window.location.href = `/${slug}/status/${bookingResult.bookingCode}`}
                   style={{ backgroundColor: primaryColor }}
                   className="text-white px-8"
                 >
                   💳 Bayar Sekarang
                 </Button>
-                <p className="text-xs text-zinc-400">Anda akan diarahkan ke halaman pembayaran DOKU</p>
               </div>
             ) : (
-              <p className="text-sm text-zinc-500">Simpan kode ini untuk melacak status pemesanan Anda.</p>
+              <p className="text-sm text-zinc-500">Simpan kode ini untuk melacak status pesanan.</p>
             )}
-            <div className="flex gap-2 justify-center pt-4">
-              <Button variant="outline" onClick={() => window.location.reload()}>Pesan Lagi</Button>
-            </div>
+            <Link href={`/${slug}/status/${bookingResult.bookingCode}`}>
+              <Button variant="outline" className="mt-2">Lihat Status Pesanan</Button>
+            </Link>
           </div>
         )}
       </div>

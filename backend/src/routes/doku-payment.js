@@ -21,7 +21,7 @@ router.post('/create', async (req, res) => {
       return res.status(500).json({ error: 'Payment gateway belum dikonfigurasi' });
     }
 
-    const result = await createPayment(booking, setting, booking.bookingAddons);
+    const result = await createPayment(booking, setting, booking.bookingAddons, slug);
 
     if (result.success) {
       await prisma.booking.update({

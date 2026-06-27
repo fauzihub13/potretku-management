@@ -33,7 +33,7 @@ function hashBody(body) {
   return crypto.createHash('sha256').update(bodyStr).digest('base64');
 }
 
-async function createPayment(booking, vendorSettings, addons) {
+async function createPayment(booking, vendorSettings, addons, slug) {
   const clientId = process.env.DOKU_CLIENT_ID;
   const clientSecret = process.env.DOKU_CLIENT_SECRET;
   const isProduction = process.env.DOKU_ENV === 'production';
@@ -41,7 +41,7 @@ async function createPayment(booking, vendorSettings, addons) {
   const invoiceNumber = `INV-${booking.bookingCode}-${Date.now()}`;
   const amount = Math.round(booking.totalAmount);
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const callbackUrl = `${frontendUrl}/payment/callback?bookingCode=${booking.bookingCode}`;
+  const callbackUrl = `${frontendUrl}/${slug}/status/${booking.bookingCode}`;
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
 
   const lineItems = [
@@ -73,6 +73,7 @@ async function createPayment(booking, vendorSettings, addons) {
       currency: 'IDR',
       callback_url: callbackUrl,
       callback_url_result: callbackUrl,
+      callback_url_cancel: `${frontendUrl}/${slug}/status/${booking.bookingCode}`,
       language: 'ID',
       auto_redirect: true,
       line_items: lineItems
