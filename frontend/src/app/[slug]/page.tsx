@@ -102,12 +102,30 @@ export default function VendorPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const res = await api.post(`/vendor/${slug}/book`, {
+      // Step 1: Create booking
+      const bookRes = await api.post(`/vendor/${slug}/book`, {
         ...form,
         serviceId: selectedService,
         addons: selectedAddons.map(a => a.id)
       });
-      setBookingResult(res.data);
+
+      const bookingCode = bookRes.data.bookingCode;
+      const bookingId = bookRes.data.bookingId;
+
+      // Step 2: Initiate DOKU payment
+      try {
+        const payRes = await api.post('/doku/create', { bookingId, slug });
+        setBookingResult({
+          bookingCode,
+          bookingId,
+          paymentUrl: payRes.data.paymentUrl,
+          invoiceNumber: payRes.data.invoiceNumber
+        });
+      } catch {
+        // Payment gateway not configured, still show booking success
+        setBookingResult({ bookingCode, bookingId, paymentUrl: null });
+      }
+
       setStep(4);
       toast.success('Pemesanan berhasil!');
     } catch (err: any) {
@@ -361,8 +379,25 @@ export default function VendorPage() {
             <h2 className="text-xl font-bold">Pemesanan Berhasil!</h2>
             <p className="text-zinc-500">Kode pemesanan Anda:</p>
             <p className="text-2xl font-mono font-bold" style={{ color: primaryColor }}>{bookingResult.bookingCode}</p>
-            <p className="text-sm text-zinc-500">Simpan kode ini untuk melacak status pemesanan Anda.</p>
-            <Button variant="outline" onClick={() => window.location.reload()}>Pesan Lagi</Button>
+            {bookingResult.paymentUrl ? (
+              <div className="space-y-3">
+                <p className="text-sm text-zinc-500">Klik tombol di bawah untuk melakukan pembayaran DP (30%):</p>
+                <Button
+                  size="lg"
+                  onClick={() => window.location.href = bookingResult.paymentUrl}
+                  style={{ backgroundColor: primaryColor }}
+                  className="text-white px-8"
+                >
+                  💳 Bayar Sekarang
+                </Button>
+                <p className="text-xs text-zinc-400">Anda akan diarahkan ke halaman pembayaran DOKU</p>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">Simpan kode ini untuk melacak status pemesanan Anda.</p>
+            )}
+            <div className="flex gap-2 justify-center pt-4">
+              <Button variant="outline" onClick={() => window.location.reload()}>Pesan Lagi</Button>
+            </div>
           </div>
         )}
       </div>

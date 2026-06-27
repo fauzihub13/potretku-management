@@ -69,6 +69,12 @@ model Booking {
   driveEditedPhotos String?
   calendarSynced  Boolean   @default(false)
   googleEventId   String?
+  dokuPaymentId   String?
+  dokuInvoiceNo   String?
+  dokuSessionId   String?
+  dokuPaymentUrl  String?   @db.Text
+  dokuExpiredAt   DateTime?
+  dokuStatus      String?
   customFields    String?   @default("{}")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
