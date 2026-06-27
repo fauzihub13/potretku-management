@@ -230,7 +230,29 @@ export default function BookingDetailPage() {
           <CardHeader><CardTitle className="text-base">Paket & Pembayaran</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-zinc-500">Paket</span><span className="font-medium">{booking.packageName}</span></div>
-            <div className="flex justify-between"><span className="text-zinc-500">Total</span><span className="font-bold">{formatCurrency(booking.totalAmount)}</span></div>
+            <div className="flex justify-between"><span className="text-zinc-500">Harga Paket</span><span>{formatCurrency(booking.packagePrice)}</span></div>
+            
+            {booking.bookingAddons && booking.bookingAddons.length > 0 && (
+              <>
+                <div className="border-t pt-2 mt-2">
+                  <p className="text-xs font-medium text-zinc-500 mb-1">Tambahan:</p>
+                  {booking.bookingAddons.map((addon: any) => (
+                    <div key={addon.id} className="flex justify-between text-xs">
+                      <span className="text-zinc-600">{addon.name} {addon.quantity > 1 ? `×${addon.quantity}` : ''}</span>
+                      <span>{formatCurrency(addon.price * addon.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-zinc-500">Total Tambahan</span>
+                  <span>{formatCurrency(booking.bookingAddons.reduce((s: number, a: any) => s + a.price * a.quantity, 0))}</span>
+                </div>
+              </>
+            )}
+            
+            <div className="flex justify-between font-bold border-t pt-2">
+              <span>Total</span><span>{formatCurrency(booking.totalAmount)}</span>
+            </div>
             <div className="flex justify-between"><span className="text-zinc-500">DP</span><span>{formatCurrency(booking.dpAmount)}</span></div>
             <div className="flex justify-between items-center">
               <span className="text-zinc-500">DP Terbayar</span>

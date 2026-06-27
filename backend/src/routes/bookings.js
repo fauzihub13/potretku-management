@@ -655,7 +655,7 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const booking = await prisma.booking.findFirst({
       where: { id: req.params.id, userId: req.userId },
-      include: { freelancer: true, paymentProofs: true, settlements: true },
+      include: { freelancer: true, paymentProofs: true, settlements: true, bookingAddons: true },
     });
     if (!booking) return res.status(404).json({ error: "Booking not found" });
     res.json(booking);
@@ -667,6 +667,8 @@ router.get("/:id", auth, async (req, res) => {
 router.post("/", auth, async (req, res) => {
   try {
     const data = bookingSchema.parse(req.body);
+    const addonData = data.addons ? JSON.parse(data.addons) : [];
+    
     const booking = await prisma.booking.create({
       data: {
         userId: req.userId,
@@ -680,15 +682,22 @@ router.post("/", auth, async (req, res) => {
         location: data.location || null,
         packageName: data.packageName,
         packagePrice: data.packagePrice,
-        addons: data.addons || "[]",
         totalAmount: data.totalAmount,
         dpAmount: data.dpAmount || 0,
         notes: data.notes || null,
         freelancerId: data.freelancerId || null,
         deadline: data.deadline ? new Date(data.deadline) : null,
         customFields: data.customFields || "{}",
+        bookingAddons: {
+          create: addonData.map((a) => ({
+            serviceId: a.id || null,
+            name: a.name || 'Tambahan',
+            price: a.price || 0,
+            quantity: a.quantity || 1
+          }))
+        }
       },
-      include: { freelancer: true },
+      include: { freelancer: true, bookingAddons: true },
     });
     res.json(booking);
   } catch (err) {

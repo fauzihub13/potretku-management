@@ -114,12 +114,19 @@ router.post('/:slug/book', async (req, res) => {
         sessionTime: data.sessionTime || null,
         packageName: service.name,
         packagePrice: service.price,
-        addons: JSON.stringify(addonList),
         totalAmount,
         dpAmount,
         notes: data.notes || null,
         customFields: JSON.stringify(data.customFieldValues || {}),
-        status: 'pending'
+        status: 'pending',
+        bookingAddons: {
+          create: addonList.map(a => ({
+            serviceId: a.id,
+            name: a.name,
+            price: a.price,
+            quantity: 1
+          }))
+        }
       }
     });
 

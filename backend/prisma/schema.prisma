@@ -77,6 +77,7 @@ model Booking {
   paymentProofs   PaymentProof[]
   settlements     Settlement[]
   teamPayments    TeamPayment[]
+  bookingAddons   BookingAddon[]
 }
 
 model Service {
@@ -209,4 +210,15 @@ model TeamPayment {
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
   booking       Booking?   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+}
+
+model BookingAddon {
+  id          String   @id @default(cuid())
+  bookingId   String
+  serviceId   String?
+  name        String
+  price       Float
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }
