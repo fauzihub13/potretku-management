@@ -278,7 +278,7 @@ export default function BookingDetailPage() {
                 variant={booking.status === 'cancelled' ? 'destructive' : 'outline'}
                 size="sm"
                 onClick={() => updateStatus('cancelled')}
-                disabled={booking.status === 'cancelled'}
+                disabled={booking.status === 'cancelled' || booking.status === 'completed'}
               >
                 {booking.status === 'cancelled' ? 'Dibatalkan ✓' : 'Dibatalkan'}
               </Button>
@@ -286,12 +286,16 @@ export default function BookingDetailPage() {
                 variant={booking.status === 'completed' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => updateStatus('completed')}
-                disabled={booking.status === 'completed'}
+                disabled={booking.status !== 'paid'}
                 className={booking.status === 'completed' ? 'bg-green-600 hover:bg-green-700' : ''}
+                title={booking.status !== 'paid' ? 'Hanya bisa diselesaikan jika sudah dibayar' : ''}
               >
                 {booking.status === 'completed' ? 'Selesai ✓' : 'Selesai'}
               </Button>
             </div>
+            {booking.status === 'pending' && (
+              <p className="text-xs text-amber-500">⏳ Menunggu pembayaran dari klien</p>
+            )}
           </CardContent>
         </Card>
       </div>

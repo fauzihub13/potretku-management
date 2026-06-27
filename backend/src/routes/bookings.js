@@ -734,20 +734,24 @@ router.put("/:id", auth, async (req, res) => {
 router.put("/:id/status", auth, async (req, res) => {
   try {
     const { status } = req.body;
-    const valid = [
-      "pending",
-      "paid",
-      "completed",
-      "cancelled",
-    ];
-    if (!valid.includes(status))
-      return res.status(400).json({ error: "Invalid status" });
-    const booking = await prisma.booking.update({
+    const valid = ["pending", "paid", "completed", "cancelled"];
+    if (!valid.includes(status)) return res.status(400).json({ error: "Status tidak valid" });
+
+    // Selesai hanya bisa jika sudah dibayar
+    if (status === 'completed') {
+      const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
+      if (!booking) return res.status(404).json({ error: 'Pemesanan tidak ditemukan' });
+      if (booking.status !== 'paid') {
+        return res.status(400).json({ error: 'Hanya bisa diselesaikan jika sudah dibayar' });
+      }
+    }
+
+    const updated = await prisma.booking.update({
       where: { id: req.params.id },
       data: { status },
       include: { freelancer: true },
     });
-    res.json(booking);
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
