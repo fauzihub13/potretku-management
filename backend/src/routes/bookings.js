@@ -621,12 +621,12 @@ router.get("/:id/invoice", auth, async (req, res) => {
     // === 8. STAMP LUNAS (overlay jika sudah lunas semua) ===
     if (booking.dpPaid && booking.finalPaid) {
       doc.save();
-      doc.translate(297.64, 420);
-      doc.rotate(-15);
-      doc.fontSize(60).font("Helvetica-Bold").fillColor("rgba(34, 197, 94, 0.15)");
-      doc.text("LUNAS", -100, -20, { width: 200, align: "center" });
-      doc.rotate(15);
-      doc.translate(-297.64, -420);
+      doc.translate(297.64, 400);
+      doc.rotate(-12);
+      doc.fontSize(72).font("Helvetica-Bold").fillColor("rgba(34, 197, 94, 0.5)");
+      doc.text("LUNAS", -180, -20, { width: 360, align: "center" });
+      doc.rotate(12);
+      doc.translate(-297.64, -400);
       doc.restore();
     }
 
