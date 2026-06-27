@@ -248,7 +248,16 @@ export default function EditBookingPage() {
                   onValueChange={handleServiceSelect}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih paket" />
+                    <SelectValue placeholder="Pilih paket">
+                      {selectedServiceId && (() => {
+                        const s = services.find(x => x.id === selectedServiceId);
+                        if (!s) return null;
+                        const h = s.durationHours || 0;
+                        const m = s.durationMinutes || 0;
+                        const dur = h || m ? ` (${h}j ${m}m)` : '';
+                        return `${s.name}${dur} - Rp${s.price.toLocaleString()}`;
+                      })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {services
@@ -274,8 +283,14 @@ export default function EditBookingPage() {
                   value={form.freelancerId}
                   onValueChange={(v) => update("freelancerId", v || "")}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih" />
+                   <SelectTrigger>
+                    <SelectValue placeholder="Pilih freelancer">
+                      {form.freelancerId && (() => {
+                        const t = team.find(x => x.id === form.freelancerId);
+                        if (!t) return null;
+                        return `${t.name} (${t.role})`;
+                      })()}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {team.filter(t => t.isActive).map((t) => (
