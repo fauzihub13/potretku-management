@@ -42,6 +42,7 @@ export default function VendorPage() {
   const [submitting, setSubmitting] = useState(false);
   const [bookingResult, setBookingResult] = useState<any>(null);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+  const [paymentType, setPaymentType] = useState<'dp' | 'full'>('dp');
 
   useEffect(() => {
     api.get(`/vendor/${slug}`)
@@ -58,6 +59,7 @@ export default function VendorPage() {
   const totalAddons = selectedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
   const totalAmount = (selected?.price || 0) + totalAddons;
   const dpAmount = Math.round(totalAmount * 0.3);
+  const remaining = totalAmount - dpAmount;
 
   const toggleAddon = (addon: any) => {
     setSelectedAddons(prev => {
@@ -115,7 +117,7 @@ export default function VendorPage() {
 
       // Step 2: Initiate DOKU payment
       try {
-        const payRes = await api.post('/doku/create', { bookingId, slug });
+        const payRes = await api.post('/doku/create', { bookingId, slug, paymentType });
         setBookingResult({
           bookingCode,
           bookingId,
@@ -367,10 +369,31 @@ export default function VendorPage() {
               <div className="p-3 text-xs text-zinc-500 bg-zinc-50 rounded-lg max-h-32 overflow-y-auto" dangerouslySetInnerHTML={{ __html: vendor.termsHtml }} />
             )}
 
+            {/* Pilih Tipe Pembayaran */}
+            <div className="space-y-2">
+              <Label>Tipe Pembayaran</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setPaymentType('dp')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${paymentType === 'dp' ? 'border-current' : 'border-zinc-200 hover:border-zinc-300'}`}
+                  style={paymentType === 'dp' ? { borderColor: primaryColor, backgroundColor: primaryColor + '08' } : {}}>
+                  <p className="font-semibold text-sm">Bayar DP (30%)</p>
+                  <p className="text-lg font-bold mt-1" style={{ color: primaryColor }}>{formatCurrency(dpAmount)}</p>
+                  <p className="text-xs text-zinc-500 mt-1">Sisa {formatCurrency(remaining)} dibayar nanti</p>
+                </button>
+                <button type="button" onClick={() => setPaymentType('full')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${paymentType === 'full' ? 'border-current' : 'border-zinc-200 hover:border-zinc-300'}`}
+                  style={paymentType === 'full' ? { borderColor: primaryColor, backgroundColor: primaryColor + '08' } : {}}>
+                  <p className="font-semibold text-sm">Bayar Lunas</p>
+                  <p className="text-lg font-bold mt-1" style={{ color: primaryColor }}>{formatCurrency(totalAmount)}</p>
+                  <p className="text-xs text-zinc-500 mt-1">Tidak perlu bayar lagi</p>
+                </button>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(2)} className="flex-1"><ArrowLeft className="h-4 w-4 mr-2" /> Kembali</Button>
               <Button onClick={handleSubmit} disabled={submitting} className="flex-1" style={{ backgroundColor: primaryColor }}>
-                {submitting ? 'Mengirim...' : 'Kirim Pemesanan'}
+                {submitting ? 'Mengirim...' : 'Buat Pesanan'}
               </Button>
             </div>
           </div>
