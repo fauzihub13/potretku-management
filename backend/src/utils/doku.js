@@ -18,14 +18,14 @@ function generateRequestId() {
 }
 
 function getTimestamp() {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, '');
+  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 function generateSignature(clientSecret, method, endpoint, accessToken, bodyHash, timestamp) {
   const stringToSign = `${method}:${endpoint}:${accessToken}:${bodyHash}:${timestamp}`;
   const hmac = crypto.createHmac('sha256', clientSecret);
   hmac.update(stringToSign);
-  return 'SHA256=' + hmac.digest('base64');
+  return 'HMACSHA256=' + hmac.digest('base64');
 }
 
 function hashBody(body) {
@@ -104,6 +104,12 @@ async function createPayment(booking, vendorSettings, addons) {
   const signature = generateSignature(clientSecret, 'POST', endpoint, '', bodyHash, timestamp);
 
   const url = `${getApiBase()}${endpoint}`;
+
+  console.log('[DOKU] Request headers:');
+  console.log('  Client-Id:', clientId);
+  console.log('  Request-Id:', requestId);
+  console.log('  Request-Timestamp:', timestamp);
+  console.log('  Signature:', signature);
 
   const response = await fetch(url, {
     method: 'POST',
