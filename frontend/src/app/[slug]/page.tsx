@@ -40,6 +40,7 @@ export default function VendorPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [bookingResult, setBookingResult] = useState<any>(null);
+  const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     api.get(`/vendor/${slug}`)
@@ -71,6 +72,31 @@ export default function VendorPage() {
 
   const updateAddonQtyInput = (id: string, qty: number) => {
     setSelectedAddons(prev => prev.map(a => a.id === id ? { ...a, quantity: Math.max(1, qty) } : a));
+  };
+
+  const validateStep1 = (): boolean => {
+    if (!selectedService) { setStepErrors({ package: 'Pilih paket terlebih dahulu' }); return false; }
+    setStepErrors({});
+    return true;
+  };
+
+  const validateStep2 = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.clientName.trim()) errs.clientName = 'Nama wajib diisi';
+    if (!form.clientPhone.trim()) errs.clientPhone = 'Nomor WhatsApp wajib diisi';
+    else if (!/^[0-9]+$/.test(form.clientPhone)) errs.clientPhone = 'Hanya boleh angka';
+    else if (!form.clientPhone.startsWith('62')) errs.clientPhone = 'Harus diawali 62';
+    else if (form.clientPhone.length < 10 || form.clientPhone.length > 15) errs.clientPhone = '10-15 digit';
+    if (form.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.clientEmail)) errs.clientEmail = 'Email tidak valid';
+    if (!form.eventType) errs.eventType = 'Pilih jenis acara';
+    if (!form.sessionDate) errs.sessionDate = 'Tanggal wajib diisi';
+    setStepErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const goNext = () => {
+    if (step === 1 && validateStep1()) setStep(2);
+    else if (step === 2 && validateStep2()) setStep(3);
   };
 
   const handleSubmit = async () => {
@@ -142,6 +168,7 @@ export default function VendorPage() {
         {step === 1 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Pilih Paket</h2>
+            {stepErrors.package && <p className="text-sm text-red-500">{stepErrors.package}</p>}
             <div className="space-y-3">
               {services.map(s => {
                 const dur = `${s.durationHours || 0}j ${s.durationMinutes || 0}m`;
@@ -209,9 +236,34 @@ export default function VendorPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Informasi Anda</h2>
             <div className="space-y-3">
-              <div className="space-y-2"><Label>Nama Lengkap *</Label><Input value={form.clientName} onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))} required /></div>
-              <div className="space-y-2"><Label>No. WhatsApp *</Label><Input value={form.clientPhone} onChange={e => setForm(f => ({ ...f, clientPhone: e.target.value }))} placeholder="628123456789" required /></div>
-              <div className="space-y-2"><Label>Email (opsional)</Label><Input type="email" value={form.clientEmail} onChange={e => setForm(f => ({ ...f, clientEmail: e.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Nama Lengkap *</Label>
+                <Input value={form.clientName} onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))} placeholder="Masukkan nama lengkap" />
+                {stepErrors.clientName && <p className="text-xs text-red-500">{stepErrors.clientName}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>No. WhatsApp *</Label>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={form.clientPhone}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setForm(f => ({ ...f, clientPhone: val }));
+                    if (stepErrors.clientPhone) setStepErrors(p => { const { clientPhone: _, ...r } = p; return r; });
+                  }}
+                  placeholder="628123456789"
+                />
+                {stepErrors.clientPhone && <p className="text-xs text-red-500">{stepErrors.clientPhone}</p>}
+                {!stepErrors.clientPhone && form.clientPhone && !form.clientPhone.startsWith('62') && (
+                  <p className="text-xs text-amber-500">Gunakan kode negara 62 (contoh: 628123456789)</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Email (opsional)</Label>
+                <Input type="email" value={form.clientEmail} onChange={e => setForm(f => ({ ...f, clientEmail: e.target.value }))} placeholder="email@contoh.com" />
+                {stepErrors.clientEmail && <p className="text-xs text-red-500">{stepErrors.clientEmail}</p>}
+              </div>
               <div className="space-y-2">
                 <Label>Jenis Acara *</Label>
                 <Select value={form.eventType} onValueChange={(v) => setForm(f => ({ ...f, eventType: v || '' }))}>
@@ -220,8 +272,13 @@ export default function VendorPage() {
                     {vendor.eventTypes?.map((t: string) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {stepErrors.eventType && <p className="text-xs text-red-500">{stepErrors.eventType}</p>}
               </div>
-              <div className="space-y-2"><Label>Tanggal *</Label><Input type="date" value={form.sessionDate} onChange={e => setForm(f => ({ ...f, sessionDate: e.target.value }))} required /></div>
+              <div className="space-y-2">
+                <Label>Tanggal *</Label>
+                <Input type="date" value={form.sessionDate} onChange={e => setForm(f => ({ ...f, sessionDate: e.target.value }))} />
+                {stepErrors.sessionDate && <p className="text-xs text-red-500">{stepErrors.sessionDate}</p>}
+              </div>
               <div className="space-y-2">
                 <Label>Jam (opsional)</Label>
                 <Select value={form.sessionTime} onValueChange={(v) => setForm(f => ({ ...f, sessionTime: v || '' }))}>
@@ -248,8 +305,8 @@ export default function VendorPage() {
               <div className="space-y-2"><Label>Catatan (opsional)</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Kebutuhan khusus, referensi, dll." /></div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1"><ArrowLeft className="h-4 w-4 mr-2" /> Kembali</Button>
-              <Button onClick={() => form.clientName && form.clientPhone && form.eventType && form.sessionDate && setStep(3)} disabled={!form.clientName || !form.clientPhone || !form.eventType || !form.sessionDate} className="flex-1" style={{ backgroundColor: primaryColor }}>
+              <Button variant="outline" onClick={() => { setStep(1); setStepErrors({}); }} className="flex-1"><ArrowLeft className="h-4 w-4 mr-2" /> Kembali</Button>
+              <Button onClick={goNext} className="flex-1" style={{ backgroundColor: primaryColor }}>
                 Selanjutnya <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
