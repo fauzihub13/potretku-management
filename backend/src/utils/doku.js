@@ -21,8 +21,8 @@ function getTimestamp() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
-function generateSignature(clientSecret, method, endpoint, accessToken, bodyHash, timestamp) {
-  const stringToSign = `${method}:${endpoint}:${accessToken}:${bodyHash}:${timestamp}`;
+function generateSignature(clientSecret, clientId, requestId, timestamp, endpoint, bodyHash) {
+  const stringToSign = `Client-Id:${clientId}\nRequest-Id:${requestId}\nRequest-Timestamp:${timestamp}\nRequest-Target:${endpoint}\nDigest:${bodyHash}`;
   const hmac = crypto.createHmac('sha256', clientSecret);
   hmac.update(stringToSign);
   return 'HMACSHA256=' + hmac.digest('base64');
@@ -30,7 +30,7 @@ function generateSignature(clientSecret, method, endpoint, accessToken, bodyHash
 
 function hashBody(body) {
   const minified = JSON.stringify(body).replace(/\s+/g, '');
-  return crypto.createHash('sha256').update(minified).digest('hex');
+  return crypto.createHash('sha256').update(minified).digest('base64');
 }
 
 async function createPayment(booking, vendorSettings, addons) {
@@ -101,7 +101,7 @@ async function createPayment(booking, vendorSettings, addons) {
   const requestId = generateRequestId();
   const bodyHash = hashBody(body);
   const endpoint = '/checkout/v1/payment';
-  const signature = generateSignature(clientSecret, 'POST', endpoint, '', bodyHash, timestamp);
+  const signature = generateSignature(clientSecret, clientId, requestId, timestamp, endpoint, bodyHash);
 
   const url = `${getApiBase()}${endpoint}`;
 
