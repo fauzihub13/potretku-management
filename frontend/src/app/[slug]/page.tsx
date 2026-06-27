@@ -112,7 +112,7 @@ export default function VendorPage() {
       const bookingCode = bookRes.data.bookingCode;
       const bookingId = bookRes.data.bookingId;
 
-      // Step 2: Initiate DOKU payment
+      // Step 2: Initiate DOKU payment (jika gagal, booking sudah dihapus di backend)
       try {
         const payRes = await api.post('/doku/create', { bookingId, slug });
         setBookingResult({
@@ -121,13 +121,15 @@ export default function VendorPage() {
           paymentUrl: payRes.data.paymentUrl,
           invoiceNumber: payRes.data.invoiceNumber
         });
-      } catch {
-        // Payment gateway not configured, still show booking success
-        setBookingResult({ bookingCode, bookingId, paymentUrl: null });
+        setStep(4);
+        toast.success('Pemesanan berhasil!');
+      } catch (payErr: any) {
+        // DOKU gagal, booking sudah dihapus backend
+        const errMsg = payErr.response?.data?.error || 'Payment gateway gagal';
+        toast.error('Pemesanan gagal: ' + errMsg);
+        setBookingResult(null);
+        setStep(3); // Kembali ke ringkasan
       }
-
-      setStep(4);
-      toast.success('Pemesanan berhasil!');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Gagal mengirim pemesanan');
     } finally {

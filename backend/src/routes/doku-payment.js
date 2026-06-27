@@ -17,7 +17,9 @@ router.post('/create', async (req, res) => {
     if (!booking) return res.status(404).json({ error: 'Pemesanan tidak ditemukan' });
 
     if (!process.env.DOKU_CLIENT_ID || !process.env.DOKU_CLIENT_SECRET) {
-      return res.status(500).json({ error: 'DOKU belum dikonfigurasi. Isi DOKU_CLIENT_ID dan DOKU_CLIENT_SECRET di .env' });
+      // DOKU not configured, delete booking and return error
+      await prisma.booking.delete({ where: { id: booking.id } });
+      return res.status(500).json({ error: 'Payment gateway belum dikonfigurasi' });
     }
 
     const result = await createPayment(booking, setting, booking.bookingAddons);
@@ -40,10 +42,16 @@ router.post('/create', async (req, res) => {
         sessionId: result.sessionId
       });
     } else {
-      res.status(400).json({ error: result.error });
+      // DOKU gagal, hapus booking agar tidak ada data setengah jadi
+      await prisma.booking.delete({ where: { id: booking.id } });
+      res.status(400).json({ error: result.error || 'Gagal membuat pembayaran' });
     }
   } catch (err) {
     console.error('[DOKU] Error:', err);
+    // Coba hapus booking jika ada
+    if (req.body.bookingId) {
+      await prisma.booking.delete({ where: { id: req.body.bookingId } }).catch(() => {});
+    }
     res.status(500).json({ error: err.message });
   }
 });

@@ -130,7 +130,7 @@ router.post('/:slug/book', async (req, res) => {
       }
     });
 
-    res.json({ bookingCode: booking.bookingCode, message: 'Pemesanan berhasil!' });
+    res.json({ bookingId: booking.id, bookingCode: booking.bookingCode, message: 'Pemesanan berhasil!' });
   } catch (err) {
     if (err instanceof require('zod').ZodError) return res.status(400).json({ error: err.errors[0].message });
     res.status(500).json({ error: err.message });
