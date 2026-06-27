@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     api.get('/settings').then(res => setSettings(res.data)).finally(() => setLoading(false));
@@ -26,6 +27,18 @@ export default function SettingsPage() {
   }, []);
 
   const handleSave = async () => {
+    const newJsonErrors: Record<string, string> = {};
+    if (settings?.bankAccounts) {
+      try { JSON.parse(settings.bankAccounts); } catch { newJsonErrors.bankAccounts = "Format JSON bank accounts tidak valid"; }
+    }
+    if (settings?.customStatuses) {
+      try { JSON.parse(settings.customStatuses); } catch { newJsonErrors.customStatuses = "Format JSON status kustom tidak valid"; }
+    }
+    if (settings?.eventTypes) {
+      try { JSON.parse(settings.eventTypes); } catch { newJsonErrors.eventTypes = "Format JSON tipe acara tidak valid"; }
+    }
+    setJsonErrors(newJsonErrors);
+    if (Object.keys(newJsonErrors).length > 0) return;
     setSaving(true);
     try {
       await api.put('/settings', settings);
@@ -83,6 +96,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label>Tipe Acara (pisahkan dengan koma)</Label>
               <Input value={settings?.eventTypes?.replace(/[\[\]"]/g, '') || ''} onChange={e => update('eventTypes', JSON.stringify(e.target.value.split(',').map(s => s.trim())))} placeholder="Wedding, Pre-wedding, Portrait, Event" />
+              {jsonErrors.eventTypes && <p className="text-xs text-red-500">{jsonErrors.eventTypes}</p>}
             </div>
           </CardContent>
         </Card>
@@ -95,6 +109,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label>Rekening Bank (format JSON)</Label>
               <Textarea value={settings?.bankAccounts || '[]'} onChange={e => update('bankAccounts', e.target.value)} rows={4} placeholder='[{"bank":"BCA","number":"123","name":"Studio"}]' />
+              {jsonErrors.bankAccounts && <p className="text-xs text-red-500">{jsonErrors.bankAccounts}</p>}
             </div>
             <div className="space-y-2">
               <Label>URL Gambar QRIS</Label>
@@ -156,7 +171,9 @@ export default function SettingsPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Pengaturan Formulir Pemesanan</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2"><Label>Status Kustom (JSON)</Label><Textarea value={settings?.customStatuses || '[]'} onChange={e => update('customStatuses', e.target.value)} rows={3} /></div>
+            <div className="space-y-2"><Label>Status Kustom (JSON)</Label><Textarea value={settings?.customStatuses || '[]'} onChange={e => update('customStatuses', e.target.value)} rows={3} />
+              {jsonErrors.customStatuses && <p className="text-xs text-red-500">{jsonErrors.customStatuses}</p>}
+            </div>
           </CardContent>
         </Card>
       )}

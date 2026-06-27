@@ -151,6 +151,8 @@ export default function EditBookingPage() {
     }
     const amountErr = validateNumber(form.totalAmount, 'Total', 0);
     if (amountErr) newErrors.totalAmount = amountErr;
+    if (!form.eventType) newErrors.eventType = "Jenis acara wajib diisi";
+    if (!form.packageName) newErrors.package = "Pilih paket terlebih dahulu";
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
     setLoading(true);
@@ -237,6 +239,7 @@ export default function EditBookingPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.eventType && <p className="text-xs text-red-500 mt-1">{errors.eventType}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Paket</Label>
@@ -263,6 +266,7 @@ export default function EditBookingPage() {
                       })}
                   </SelectContent>
                 </Select>
+                {errors.package && <p className="text-xs text-red-500 mt-1">{errors.package}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Freelancer</Label>
